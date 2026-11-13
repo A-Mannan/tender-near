@@ -25,8 +25,22 @@
 
 ## Risk-Ordered Tier Tracker
 - [x] **Tier 0 — Spec, Design Brief & Baseline**: OpenSpec `cleartape-mvp` (`proposal.md`, `design.md`, 3 capability specs, `tasks.md`) validated (`openspec validate cleartape-mvp --strict`), `DESIGN.md`, `LICENSE`, `.gitignore`, `progress.md`.
-- [ ] **Tier 1 — Smart Contract (`contracts/cleartape`)**: Full lifecycle + `near-sandbox` adversarial suite + cold-context audit.
+- [x] **Tier 1 — Smart Contract (`contracts/cleartape`)**: Full lifecycle + `near-sandbox` adversarial suite + cold-context audit.
 - [ ] **Tier 2 — NEP-297 Indexer & Query API (`packages/indexer`)**: Real NEAR RPC ingestion + `/tape`, `/tape/median`, `/tape/win-rate`, `/tape/spread` + cold-context audit.
 - [ ] **Tier 3 — Market Terminal UI (`packages/web` + `e2e/`)**: Real data UI + Playwright full lifecycle + `375px`/`1440px` visual audit + cold-context review.
 - [ ] **Tier 4 — NEAR Testnet Deployment & Multi-Agent Demo (`scripts/testnet-demo.mjs`)**: Deployed contract + live settled prints on `testnet`.
 - [ ] **Tier 5 — Packaging & Clean-Clone Proof**: `README.md`, untracked human submission payload, clean-clone full-gate verification.
+
+## Tier 1 Audit Log (2026-11-13T20:20Z)
+
+**Toolchain**
+- `cargo-near 0.23.0` rejects `rustc > 1.86.0` for `near-sdk 5.24.0` (protocol < 84 / `near-vm-runner 0.34.7`). Pinned `rust-toolchain.toml` at repo root and in `contracts/cleartape` to `1.86.0`; WASM builds and executes in `near-sandbox 0.3.16`.
+- Sandbox suite always rebuilds `cleartape.wasm` from current source (`cargo_near_build::build_with_cli`) unless `CLEARTAPE_WASM` is explicitly set, preventing stale-artifact false positives.
+
+**Findings fixed during audit**
+1. **Compounding dispute haircut** (`resolve_dispute`): the adjusted `clearing_price` was written before the async payout succeeded; a failed `ft_transfer`/transfer rolled the job back to `Disputed` but kept the already-halved price, so each arbiter retry halved the worker payout again. Fixed by passing an optional `payout_override` through `initiate_settlement` → `on_settlement_complete` and only committing the adjusted price on callback success. Unit test covers failure → rollback → retry at identical 50% (no 25% haircut).
+2. **Struct-variant `StorageKey` bloat**: `JobCommits { job_id }` variants are Borsh-serialized with a 9-byte payload. Replaced with distinct unit variants (`JobCommits`, `JobCommitWorkers`, `JobReveals`, `JobRevealWorkers`) so every collection owns an isolated 1-byte prefix.
+3. **Callback gas headroom**: `on_settlement_complete` emits a full `job_settled` NEP-297 event and schedules a surplus transfer/callback; `20 TGas` was too tight for the FT path. Raised `CALLBACK_GAS` to `30 TGas` and `MIN_ACTION_GAS` to `65 TGas` across settlement/refund entry points.
+4. **`ft_on_transfer` storage parity**: FT job creation now measures actual immediate storage delta and rejects if the pre-funded credit did not cover it (mirrors `create_job`).
+
+**Verified invariants** (unit + sandbox): copied-commit replay fails; cross-job commitment replay fails; wrong-phase commit/reveal fail; reserve-exceeding reveal fails; exact ties resolve by earliest `commit_seq`; unrevealed bonds are slashed to the buyer; zero-reveal auctions refund in full; silent buyers cannot block `finalize_after_timeout`; double settlement fails; failed NEAR/FT payouts roll back and are retryable; `#[private]` callbacks reject external callers; restricted `FunctionCall` Access Key (allowance, 0-deposit) can commit/reveal/deliver/timeout-settle.

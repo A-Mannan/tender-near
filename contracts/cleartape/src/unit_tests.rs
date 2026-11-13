@@ -100,6 +100,7 @@ fn vickrey_second_price_lifecycle_and_nep297_events() {
         U64(0),
         "buyer_accepted".to_string(),
         JobStatus::Delivered,
+        None,
         Err(PromiseError::Failed),
     );
     assert!(!ok);
@@ -113,6 +114,7 @@ fn vickrey_second_price_lifecycle_and_nep297_events() {
         U64(0),
         "timeout_auto_settled".to_string(),
         JobStatus::Delivered,
+        None,
         Ok(()),
     );
     assert!(ok2);
@@ -307,5 +309,45 @@ fn exact_tie_broken_by_earliest_commit_seq_and_bond_slashing() {
     // Arbiter awards 50% (5000 bps)
     testing_env!(ctx("arbiter.testnet", 4_500, 0).build());
     let _ = ct.resolve_dispute(U64(0), 5_000);
-    assert_eq!(ct.get_job(U64(0)).unwrap().clearing_price, Some(U128(tie_bid / 2)));
+    let settling = ct.get_job(U64(0)).unwrap();
+    assert_eq!(settling.status, JobStatus::Settling);
+    assert_eq!(
+        settling.clearing_price,
+        Some(U128(tie_bid)),
+        "adjusted price must not be committed before payout succeeds"
+    );
+
+    // Simulate async payout failure: rollback must preserve the original clearing price
+    testing_env!(ctx("cleartape.testnet", 4_501, 0).build());
+    let failed = ct.on_settlement_complete(
+        U64(0),
+        "arbiter_resolved".to_string(),
+        JobStatus::Disputed,
+        Some(U128(tie_bid / 2)),
+        Err(PromiseError::Failed),
+    );
+    assert!(!failed);
+    let rolled = ct.get_job(U64(0)).unwrap();
+    assert_eq!(rolled.status, JobStatus::Disputed);
+    assert_eq!(
+        rolled.clearing_price,
+        Some(U128(tie_bid)),
+        "rollback must not leave the 50% haircut applied"
+    );
+
+    // Retry at 50% -> same adjusted payout, no compounding 25% haircut
+    testing_env!(ctx("arbiter.testnet", 4_600, 0).build());
+    let _ = ct.resolve_dispute(U64(0), 5_000);
+    testing_env!(ctx("cleartape.testnet", 4_601, 0).build());
+    let ok = ct.on_settlement_complete(
+        U64(0),
+        "arbiter_resolved".to_string(),
+        JobStatus::Disputed,
+        Some(U128(tie_bid / 2)),
+        Ok(()),
+    );
+    assert!(ok);
+    let settled = ct.get_job(U64(0)).unwrap();
+    assert_eq!(settled.status, JobStatus::Settled);
+    assert_eq!(settled.clearing_price, Some(U128(tie_bid / 2)));
 }

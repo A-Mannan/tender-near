@@ -21,9 +21,9 @@ pub const BYTES_PER_BID_SLOT: u64 = 320;
 pub const BASE_JOB_STORAGE_BYTES: u64 = 1_400;
 
 pub const FT_TRANSFER_GAS: Gas = Gas::from_tgas(20);
-pub const CALLBACK_GAS: Gas = Gas::from_tgas(20);
+pub const CALLBACK_GAS: Gas = Gas::from_tgas(30);
 pub const SURPLUS_CALLBACK_GAS: Gas = Gas::from_tgas(10);
-pub const MIN_ACTION_GAS: Gas = Gas::from_tgas(55);
+pub const MIN_ACTION_GAS: Gas = Gas::from_tgas(65);
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
@@ -82,10 +82,10 @@ impl ClearTape {
             next_job_id: 0,
             next_commit_seq: 1,
             jobs: LookupMap::new(StorageKey::Jobs),
-            job_commits: LookupMap::new(StorageKey::JobCommits { job_id: 0 }),
-            job_commit_workers: LookupMap::new(StorageKey::JobCommits { job_id: 1 }),
-            job_reveals: LookupMap::new(StorageKey::JobReveals { job_id: 0 }),
-            job_reveal_workers: LookupMap::new(StorageKey::JobReveals { job_id: 1 }),
+            job_commits: LookupMap::new(StorageKey::JobCommits),
+            job_commit_workers: LookupMap::new(StorageKey::JobCommitWorkers),
+            job_reveals: LookupMap::new(StorageKey::JobReveals),
+            job_reveal_workers: LookupMap::new(StorageKey::JobRevealWorkers),
             worker_bonds: LookupMap::new(StorageKey::WorkerBonds),
             locked_bonds: LookupMap::new(StorageKey::LockedBonds),
             claimable_balances: LookupMap::new(StorageKey::ClaimableBalances),
@@ -355,6 +355,7 @@ impl ClearTape {
         self.storage_credits
             .insert(sender_id.clone(), credit - storage_req);
 
+        let before_storage = env::storage_usage();
         self.insert_new_job(
             sender_id,
             parsed.title,
@@ -376,6 +377,16 @@ impl ClearTape {
             max_commits,
             parsed.arbiter,
             NearToken::from_yoctonear(storage_req),
+        );
+        self.jobs.flush();
+        self.job_commit_workers.flush();
+        self.job_reveal_workers.flush();
+        let actual_immediate_cost = (env::storage_usage().saturating_sub(before_storage) as u128)
+            .checked_mul(env::storage_byte_cost().as_yoctonear())
+            .unwrap();
+        require!(
+            storage_req >= actual_immediate_cost,
+            "Reserved storage did not cover immediate FT job state write"
         );
         U128(0)
     }
@@ -742,7 +753,7 @@ impl ClearTape {
         if reveal_workers.is_empty() {
             require!(
                 env::prepaid_gas() >= MIN_ACTION_GAS,
-                "Attach at least 55 TGas to finalize zero-reveal refund"
+                "Attach at least 65 TGas to finalize zero-reveal refund"
             );
             job.status = JobStatus::Refunding;
             let buyer = job.buyer.clone();
@@ -912,7 +923,7 @@ impl ClearTape {
             job.status == JobStatus::Delivered || job.status == JobStatus::Disputed,
             "Job is not in Delivered or Disputed state"
         );
-        self.initiate_settlement(id, "buyer_accepted".to_string())
+        self.initiate_settlement(id, "buyer_accepted".to_string(), None)
     }
 
     /// Optimistic auto-settlement after `dispute_window_ns` elapses with no dispute.
@@ -930,14 +941,14 @@ impl ClearTape {
             now >= delivery.dispute_deadline_ns.0,
             "Dispute window has not elapsed yet"
         );
-        self.initiate_settlement(id, "timeout_auto_settled".to_string())
+        self.initiate_settlement(id, "timeout_auto_settled".to_string(), None)
     }
 
     /// Refund buyer if winner fails to deliver before `delivery_deadline_ns`.
     pub fn claim_delivery_timeout(&mut self, job_id: U64) -> Promise {
         require!(
             env::prepaid_gas() >= MIN_ACTION_GAS,
-            "Attach at least 55 TGas"
+            "Attach at least 65 TGas"
         );
         let now = env::block_timestamp();
         let id = job_id.0;
@@ -1015,7 +1026,7 @@ impl ClearTape {
         require!(winner_bps <= 10_000, "winner_bps must be <= 10000");
         require!(
             env::prepaid_gas() >= MIN_ACTION_GAS,
-            "Attach at least 55 TGas"
+            "Attach at least 65 TGas"
         );
         let caller = env::predecessor_account_id();
         let id = job_id.0;
@@ -1062,15 +1073,20 @@ impl ClearTape {
             );
         }
 
-        job.clearing_price = Some(adjusted);
-        self.jobs.insert(id, job);
-        self.initiate_settlement(id, "arbiter_resolved".to_string())
+        // Do NOT overwrite `job.clearing_price` until `on_settlement_complete` succeeds,
+        // preventing compounding haircuts if an async payout fails and is retried.
+        self.initiate_settlement(id, "arbiter_resolved".to_string(), Some(U128(adjusted)))
     }
 
-    fn initiate_settlement(&mut self, id: u64, trigger: String) -> Promise {
+    fn initiate_settlement(
+        &mut self,
+        id: u64,
+        trigger: String,
+        payout_override: Option<U128>,
+    ) -> Promise {
         require!(
             env::prepaid_gas() >= MIN_ACTION_GAS,
-            "Attach at least 55 TGas for settlement + callback"
+            "Attach at least 65 TGas for settlement + callback"
         );
         let mut job = self.jobs.get(&id).cloned().expect("Job not found");
         let prev_status = job.status;
@@ -1079,7 +1095,9 @@ impl ClearTape {
             "Job cannot be settled in its current state"
         );
 
-        let clearing_price = job.clearing_price.expect("Missing clearing price");
+        let clearing_price = payout_override
+            .map(|v| v.0)
+            .unwrap_or_else(|| job.clearing_price.expect("Missing clearing price"));
         let payout_receiver = job
             .payout_account
             .clone()
@@ -1111,7 +1129,7 @@ impl ClearTape {
         transfer_promise.then(
             Self::ext(env::current_account_id())
                 .with_static_gas(CALLBACK_GAS)
-                .on_settlement_complete(U64(id), trigger, prev_status),
+                .on_settlement_complete(U64(id), trigger, prev_status, payout_override),
         )
     }
 
@@ -1121,6 +1139,7 @@ impl ClearTape {
         job_id: U64,
         trigger: String,
         prev_status: JobStatus,
+        payout_override: Option<U128>,
         #[callback_result] call_result: Result<(), PromiseError>,
     ) -> bool {
         let id = job_id.0;
@@ -1133,6 +1152,9 @@ impl ClearTape {
                 let now = env::block_timestamp();
                 job.status = JobStatus::Settled;
                 job.settled_at_ns = Some(now);
+                if let Some(override_amount) = payout_override {
+                    job.clearing_price = Some(override_amount.0);
+                }
                 let clearing_price = job.clearing_price.unwrap_or(0);
                 let surplus = job.reserve_price.saturating_sub(clearing_price);
                 let buyer = job.buyer.clone();

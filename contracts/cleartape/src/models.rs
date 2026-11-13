@@ -5,8 +5,10 @@ use near_sdk::{AccountId, BorshStorageKey, NearToken, near};
 #[derive(BorshStorageKey)]
 pub enum StorageKey {
     Jobs,
-    JobCommits { job_id: u64 },
-    JobReveals { job_id: u64 },
+    JobCommits,
+    JobCommitWorkers,
+    JobReveals,
+    JobRevealWorkers,
     WorkerBonds,
     LockedBonds,
     ClaimableBalances,
