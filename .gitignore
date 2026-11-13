@@ -1,0 +1,30 @@
+# Rust / NEAR build outputs
+target/
+**/target/
+
+# Node / frontend
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+
+# Local runtime data & test artifacts
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.data/
+playwright-report/
+test-results/
+
+# Local agent harness metadata
+.opencode/
+.agents/
+
+# Secrets, wallets, human submission payload (NEVER COMMIT)
+.env
+.env.*
+!.env.example
+*.pem
+*credentials*.json
+submission-payload.json
+.near-credentials/
