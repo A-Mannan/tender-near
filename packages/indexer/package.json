@@ -1,0 +1,22 @@
+{
+  "name": "@tender/indexer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "NEP-297 Tender tape indexer and query API",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/src/index.js",
+    "dev": "npm run build && node dist/src/index.js",
+    "test": "npm run build && node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "near-api-js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.0",
+    "typescript": "^5.9.3"
+  }
+}
