@@ -182,6 +182,7 @@ Environment overrides (all optional):
 ### 5. Playwright
 
 ```bash
+npm run indexer:build
 npm --prefix packages/web run build
 cd packages/web
 npx playwright install chromium

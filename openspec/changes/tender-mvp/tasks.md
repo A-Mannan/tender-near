@@ -23,7 +23,7 @@
 - [x] 4.1 Scaffold `packages/web` (Vite + React + TypeScript + Tailwind v4 + `@phosphor-icons/react`) implementing `DESIGN.md` tokens, WebCrypto `tender:v1` SHA-256 commitment helper + local salt vault, NEAR RPC/Indexer client, and honest loading/empty/error states with zero hardcoded market numbers, verifying `npm --prefix packages/web run build` succeeds.
 - [x] 4.2 Build the Consolidated Tape Terminal (live benchmark strip for median, spread, buyer savings, settled volume; chronological settled-prints tape with category filter & receipt/hash inspection; category medians & worker win-rate leaderboard; and interactive 5-stage Sealed-Bid Clearinghouse Drawer/Workbench supporting NEAR Testnet Wallet + live agent execution), verifying `npm --prefix packages/web run typecheck && npm --prefix packages/web run build`.
 - [x] 4.3 Author Playwright full-stack E2E suite (`packages/web/e2e/market.spec.ts` for live tape, filters, proof drawer, theme, error/empty states, API contract on desktop `1440x900` and mobile `375x812`; `packages/web/e2e/lifecycle.spec.ts` for the opt-in live testnet create → commit → reveal → clear → deliver → accept → print lifecycle), verifying `npm --prefix packages/web run build && cd packages/web && npx playwright test`.
-- [ ] 4.4 Inspect captured `375px` and `1440px` Playwright screenshots directly for visual hierarchy, spacing, alignment, and 5-second comprehension, apply UI polish fixes if needed, run Tier 3 cold-context review, and re-verify `npx playwright test` passes. (Screenshots inspected; final suite 8 passed, 2 opt-in skips. Cold-context review pending.)
+- [x] 4.4 Inspect captured `375px` and `1440px` Playwright screenshots directly for visual hierarchy, spacing, alignment, and 5-second comprehension, apply UI polish fixes if needed, run Tier 3 cold-context review, and re-verify `npx playwright test` passes. (Screenshots inspected; independent review findings fixed; isolated rerun passed 8 tests with 2 expected opt-in lifecycle skips.)
 
 ## 5. Tier 4 — NEAR Testnet Deployment & Multi-Agent Live Demo (`scripts/`)
 
@@ -33,7 +33,7 @@
 ## 6. Tier 5 — Documentation, Submission Kit & Clean-Clone Gate Proof
 
 - [x] 6.1 Write comprehensive `README.md` (Tender overview, architecture diagram, mechanism design, setup/build/test/run commands, `testnet` deployment proof, API reference, and `"Design deviations"` section citing official `docs.near.org` URLs) and untracked human-only submission helper (gitignored `submission-payload.json` with `<HUMAN>` placeholders), verifying `git check-ignore submission-payload.json .data/testnet-keys.json` succeeds and `git ls-files | grep -E '^(\.data/|submission-payload\.json|\.near-credentials/)'` returns no matches.
-- [ ] 6.2 Clone the repository into a fresh isolated directory (`/tmp/opencode/tender-clean-verify`), run every build and test gate from scratch (`cargo test`, indexer tests, web build, Playwright E2E, testnet read check), and verify every gate exits 0 cleanly. (First attempt exposed an out-of-sync npm lockfile; fixed locally, rerun pending.)
+- [x] 6.2 Clone the repository into a fresh isolated directory (`/tmp/opencode/tender-clean-verify`), run every build and test gate from scratch (`cargo test`, indexer tests, web build, Playwright E2E, testnet read check), and verify every gate exits 0 cleanly. (Initial `npm ci` exposed an out-of-sync lockfile; fixed and committed before the isolated rerun. All gates passed, including strict OpenSpec, WASM hash, testnet read-only call, and Playwright.)
 
 ## Workflow follow-up
 

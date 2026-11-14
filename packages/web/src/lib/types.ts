@@ -93,7 +93,7 @@ export interface WinRateRow {
   reveals: number;
   win_rate_bps: number | null;
   volume_won: string;
-  volume_won_near: string;
+  volume_won_near: string | null;
 }
 
 export interface WinRateResponse {

@@ -652,31 +652,39 @@ export class TapeDb {
     }));
   }
 
-  workerReveals(filter: { category?: string | null; contract?: string | null; sinceNs?: string | null } = {}): WorkerRevealRow[] {
-    const clauses = ["event = 'bid_revealed'", "actor IS NOT NULL"];
+  workerReveals(filter: PrintFilter = {}): WorkerRevealRow[] {
+    const clauses = ["e.event = 'bid_revealed'", "e.actor IS NOT NULL"];
     const params: Array<string | number> = [];
+
     if (filter.contract) {
-      clauses.push("contract_id = ?");
+      clauses.push("e.contract_id = ?");
       params.push(filter.contract);
     }
     if (filter.category) {
-      clauses.push("json_extract(data_json, '$.category') = ?");
+      clauses.push("j.category = ?");
       params.push(filter.category);
     }
+    if (filter.unit) {
+      clauses.push("j.unit_label = ?");
+      params.push(filter.unit);
+    }
+    if (filter.escrow === "near") clauses.push("j.escrow_token_id IS NULL");
+    if (filter.escrow === "ft") clauses.push("j.escrow_token_id IS NOT NULL");
     if (filter.sinceNs) {
-      clauses.push("CAST(block_timestamp_ns AS INTEGER) >= ?");
+      clauses.push("CAST(e.block_timestamp_ns AS INTEGER) >= ?");
       params.push(filter.sinceNs);
     }
     const rows = this.db
       .prepare(
-        `SELECT actor AS worker, COUNT(*) AS reveals FROM events
-         WHERE ${clauses.join(" AND ")} GROUP BY actor ORDER BY reveals DESC`,
+        `SELECT e.actor AS worker, COUNT(*) AS reveals FROM events e
+         JOIN jobs j ON j.contract_id = e.contract_id AND j.job_id = e.job_id
+         WHERE ${clauses.join(" AND ")} GROUP BY e.actor ORDER BY reveals DESC`,
       )
       .all(...params) as Array<{ worker: string; reveals: number | bigint }>;
     return rows.map((row) => ({ worker: row.worker, reveals: Number(row.reveals) }));
   }
 
-  workerWins(filter: { category?: string | null; contract?: string | null; sinceNs?: string | null } = {}): WorkerWinRow[] {
+  workerWins(filter: PrintFilter = {}): WorkerWinRow[] {
     const clauses = ["winner IS NOT NULL"];
     const params: Array<string | number> = [];
     if (filter.contract) {
@@ -686,6 +694,14 @@ export class TapeDb {
     if (filter.category) {
       clauses.push("category = ?");
       params.push(filter.category);
+    }
+    if (filter.unit) {
+      clauses.push("unit_label = ?");
+      params.push(filter.unit);
+    }
+    if (filter.escrow) {
+      clauses.push("escrow_kind = ?");
+      params.push(filter.escrow);
     }
     if (filter.sinceNs) {
       clauses.push("CAST(settled_at_ns AS INTEGER) >= ?");

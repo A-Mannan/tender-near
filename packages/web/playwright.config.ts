@@ -47,6 +47,12 @@ function indexerWindow(): { start: number | null; end: number | null } {
 const WINDOW = indexerWindow();
 const INDEXER_PORT = Number(process.env.TENDER_E2E_INDEXER_PORT ?? 8787);
 const WEB_PORT = Number(process.env.TENDER_E2E_WEB_PORT ?? 4174);
+if (!Number.isInteger(INDEXER_PORT) || INDEXER_PORT < 1 || INDEXER_PORT > 65535) {
+  throw new Error("TENDER_E2E_INDEXER_PORT must be an integer from 1 to 65535");
+}
+if (!Number.isInteger(WEB_PORT) || WEB_PORT < 1 || WEB_PORT > 65535) {
+  throw new Error("TENDER_E2E_WEB_PORT must be an integer from 1 to 65535");
+}
 
 export default defineConfig({
   testDir: "./e2e",
@@ -81,7 +87,7 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: `npx vite preview --port ${WEB_PORT} --strictPort --host 127.0.0.1`,
+      command: `TENDER_API_PROXY=http://127.0.0.1:${INDEXER_PORT} npx vite preview --port ${WEB_PORT} --strictPort --host 127.0.0.1`,
       url: `http://127.0.0.1:${WEB_PORT}`,
       timeout: 120_000,
       reuseExistingServer: false,

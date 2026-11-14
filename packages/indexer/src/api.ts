@@ -373,7 +373,10 @@ async function route(
       ...serializeStats(stats),
     };
     if (url.searchParams.get("group_by") === "category") {
-      response.by_category = groupByCategory(prints);
+      response.by_category = groupByCategory(prints).map(({ category, stats }) => ({
+        category,
+        stats: serializeStats(stats),
+      }));
     }
     json(res, 200, response);
     return;
@@ -392,6 +395,8 @@ async function route(
 
   if (method === "GET" && path === "/tape/win-rate") {
     const filter = parseFilter(url);
+    // NEAR and FT amounts are different denominations; never aggregate them together.
+    filter.escrow ??= "near";
     const limit = intParam(url, "limit", 25, 1, MAX_LIMIT);
     const reveals = db.workerReveals(filter);
     const wins = db.workerWins(filter);
@@ -406,7 +411,7 @@ async function route(
         reveals: row.reveals,
         win_rate_bps: row.win_rate_bps,
         volume_won: row.volume_won,
-        volume_won_near: formatNear(row.volume_won),
+        volume_won_near: filter.escrow === "ft" ? null : formatNear(row.volume_won),
       })),
     });
     return;

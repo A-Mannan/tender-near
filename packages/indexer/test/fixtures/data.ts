@@ -59,6 +59,8 @@ export function jobCreated(
     reserveNear?: number;
     mechanism?: string;
     minWorkerBond?: string;
+    escrowToken?: unknown;
+    contract?: string;
   } = {},
 ): StoredEvent {
   const reserve = nearExact(Math.round((options.reserveNear ?? 3) * 1000));
@@ -74,7 +76,7 @@ export function jobCreated(
       spec_uri: `ipfs://spec-${jobId}`,
       work_units: String(options.workUnits ?? 3),
       unit_label: options.unitLabel ?? "kloc",
-      escrow_token: "Near",
+      escrow_token: options.escrowToken ?? "Near",
       mechanism: options.mechanism ?? "VickreySecondPrice",
       reserve_price: reserve,
       min_worker_bond: options.minWorkerBond ?? "0",
@@ -86,7 +88,7 @@ export function jobCreated(
       dispute_window_ns: "1700000400000000000",
       created_at_ns: "1700000000000000000",
     },
-    { timestampNs: "1700000000000000000" },
+    { timestampNs: "1700000000000000000", contract: options.contract },
   );
 }
 
@@ -114,17 +116,18 @@ export function revealed(
   bid: string,
   revealCount: number,
   commitSeq: number,
+  options: { category?: string; contract?: string } = {},
 ): StoredEvent {
   return event("bid_revealed", blockHeight, {
     job_id: String(jobId),
-    category: "smart-contract-audit",
+    category: options.category ?? "smart-contract-audit",
     worker,
     bid_yocto: bid,
     eta_seconds: "120",
     commit_seq: commitSeq,
     reveal_count: revealCount,
     revealed_at_ns: "1700000100000000000",
-  });
+  }, { contract: options.contract });
 }
 
 export function cleared(
@@ -185,6 +188,7 @@ export function settled(
     mechanism?: string;
     commits?: number;
     reveals?: number;
+    escrowToken?: unknown;
   },
 ): StoredEvent {
   const unit = (BigInt(options.clearing) / BigInt(options.workUnits)).toString();
@@ -197,7 +201,7 @@ export function settled(
       title: options.title,
       category: options.category,
       mechanism: options.mechanism ?? "VickreySecondPrice",
-      escrow_token: "Near",
+      escrow_token: options.escrowToken ?? "Near",
       buyer: "buyer.testnet",
       winner: options.winner,
       reserve_price: options.reserve,
@@ -218,6 +222,19 @@ export function settled(
     },
     { timestampNs: "1700000180000000000" },
   );
+}
+
+export function ftJobCreated(
+  jobId: number,
+  blockHeight: number,
+  options: { buyer: string; tokenId: string; category: string; contract: string },
+): StoredEvent {
+  return jobCreated(jobId, blockHeight, {
+    buyer: options.buyer,
+    category: options.category,
+    escrowToken: { Ft: { token_id: options.tokenId } },
+    contract: options.contract,
+  });
 }
 
 export function refunded(jobId: number, blockHeight: number): StoredEvent {
