@@ -86,6 +86,9 @@ echo "==> Playwright browser"
 echo "==> Playwright (desktop 1440x900 + mobile 375x812)"
 (
   cd packages/web
+  # Isolated ports: the verifier must not depend on (or fight over) a local dev server.
+  TENDER_E2E_INDEXER_PORT="${TENDER_E2E_INDEXER_PORT:-8877}" \
+  TENDER_E2E_WEB_PORT="${TENDER_E2E_WEB_PORT:-4274}" \
   npx playwright test
 )
 

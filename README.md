@@ -189,7 +189,7 @@ npx playwright install chromium
 npx playwright test
 ```
 
-The default suite starts its own fresh indexer and preview server, needs no keys, and covers The Tape, the proof drawer, filters, theme persistence, error/empty states, the API contract, and both promised viewports. It reads the demo block window from `.data/testnet-demo.json` when present; otherwise it falls back to the committed `deployments/testnet.json` window. A clean clone therefore runs the suite without local state.
+First build the indexer and web app; this installs no secrets and needs no testnet account. The default read-only suite replays the verified public testnet event window from `deployments/testnet-replay.json` through the real SQLite projection and API. This keeps clean-clone verification deterministic; live receipt reconstruction is verified separately below.
 
 The opt-in lifecycle test signs with the disposable demo keys:
 
@@ -258,9 +258,9 @@ These are the commands a judge can rerun; results below are from the final local
 | --- | --- | --- |
 | Contract unit + sandbox | `cargo test --manifest-path contracts/tender/Cargo.toml` | 6 passed (5 unit + 1 near-sandbox), 0 failed |
 | WASM build | `cd contracts/tender && cargo near build non-reproducible-wasm` | `b77ad42d…1a73f4` (matches deployed code hash) |
-| Indexer tests | `npm run indexer:test` | 39 passed, 0 failed |
+| Indexer tests | `npm run indexer:test` | 42 passed, 0 failed |
 | Web typecheck/build | `npm --prefix packages/web run build` | TypeScript clean, Vite build OK |
-| Playwright (desktop + mobile) | `cd packages/web && npx playwright test` | 8 passed, 2 skipped (opt-in write lifecycle); desktop 1440×900 + mobile 375×812 |
+| Playwright (desktop + mobile) | `cd packages/web && npx playwright test` | 8 passed, 2 skipped (opt-in write lifecycle); 1440×900 + 375×812 against a replay of verified public testnet receipts |
 | Live testnet tape | `NEAR_RPC_URL=https://near-testnet.drpc.org node scripts/verify-testnet.mjs` | 2 prints, 24 events, 595 blocks; median `0.320833` NEAR/unit, spread `2857` bps; all assertions passed |
 | OpenSpec validity | `openspec validate tender-mvp --strict` | Change is valid |
 
@@ -275,6 +275,7 @@ packages/web/              React terminal, WebCrypto signing helpers, Playwright
 scripts/                   Testnet demo, receipt-backed verifier, RPC probe
 openspec/                  Proposal, design, capability specs, per-task verification
 deployments/testnet.json   Verified deployment and live tape proof
+deployments/testnet-replay.json  Public block/event window for deterministic UI tests
 DESIGN.md                  Explicit design brief and token system
 progress.md                Build log, audit findings, limitations
 ```

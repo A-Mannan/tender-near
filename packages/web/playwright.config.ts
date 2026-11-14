@@ -7,6 +7,9 @@ const ROOT = fileURLToPath(new URL("../..", import.meta.url));
 const DEMO_PATH = resolve(ROOT, ".data/testnet-demo.json");
 const CONTRACT_ID = process.env.TENDER_E2E_CONTRACT ?? "tender-hack-1114g.testnet";
 const DEPLOY_PATH = resolve(ROOT, "deployments/testnet.json");
+const REPLAY_PATH = resolve(ROOT, "deployments/testnet-replay.json");
+const REPLAY_ENABLED = process.env.TENDER_E2E_LIFECYCLE !== "1" && existsSync(REPLAY_PATH);
+const SEED_REPLAY = REPLAY_ENABLED ? "node scripts/replay-testnet-window.mjs && " : "";
 
 /** Prefer the local demo window; fall back to the committed deployment proof. */
 function indexerWindow(): { start: number | null; end: number | null } {
@@ -38,7 +41,9 @@ function indexerWindow(): { start: number | null; end: number | null } {
     const start = deploy.indexer?.start_block;
     const last = deploy.indexer?.last_indexed_block;
     if (Number.isInteger(start) && Number.isInteger(last)) {
-      return { start: start as number, end: (last as number) + 10 };
+      // The clean clone has no demo JSON. Recover the committed proof window,
+      // but cap work at its last transaction block to avoid empty live-head scans.
+      return { start: start as number, end: last as number };
     }
   }
   throw new Error("No indexer window found; run scripts/testnet-demo.mjs or provide deployments/testnet.json");
@@ -80,7 +85,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `rm -f .data/e2e.sqlite .data/e2e.sqlite-shm .data/e2e.sqlite-wal && TENDER_DB=.data/e2e.sqlite HOST=127.0.0.1 PORT=${INDEXER_PORT} TENDER_START_BLOCK=${WINDOW.start ?? ""} TENDER_END_BLOCK=${WINDOW.end ?? ""} TENDER_NETWORK=testnet TENDER_CONTRACTS=${CONTRACT_ID} CORS_ORIGIN=* NEAR_RPC_URL=https://near-testnet.drpc.org INDEXER_CONCURRENCY=8 MAX_BLOCKS_PER_SYNC=200 SYNC_INTERVAL_MS=1200 node packages/indexer/dist/src/index.js`,
+      command: `rm -f .data/e2e.sqlite .data/e2e.sqlite-shm .data/e2e.sqlite-wal && ${SEED_REPLAY}TENDER_DB=.data/e2e.sqlite HOST=127.0.0.1 PORT=${INDEXER_PORT} TENDER_START_BLOCK=${WINDOW.start ?? ""} TENDER_END_BLOCK=${WINDOW.end ?? ""} TENDER_NETWORK=testnet TENDER_CONTRACTS=${CONTRACT_ID} CORS_ORIGIN=* NEAR_RPC_URL=https://near-testnet.drpc.org INDEXER_CONCURRENCY=8 MAX_BLOCKS_PER_SYNC=200 SYNC_INTERVAL_MS=1200 node packages/indexer/dist/src/index.js`,
       url: `http://127.0.0.1:${INDEXER_PORT}/health`,
       cwd: "../..",
       timeout: 300_000,

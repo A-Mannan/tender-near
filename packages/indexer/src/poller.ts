@@ -154,9 +154,14 @@ export class Indexer {
 
   /** Process one bounded batch of finalized blocks. */
   async syncOnce(): Promise<SyncSummary> {
+    const lastIndexed = this.db.lastProcessedHeight();
+    if (this.config.endBlock !== null && lastIndexed !== null && lastIndexed >= this.config.endBlock) {
+      this.lastSyncAt = new Date().toISOString();
+      return { from: null, to: null, blocks: 0, events: 0, prints: 0, skipped: 0, warnings: [] };
+    }
+
     const latest = await this.rpc.getLatestBlock();
     this.lastRpcHeight = latest.header.height;
-    const lastIndexed = this.db.lastProcessedHeight();
     const from = lastIndexed === null ? (this.config.startBlock ?? latest.header.height) : lastIndexed + 1;
     const target = Math.min(latest.header.height, this.config.endBlock ?? latest.header.height);
     const warnings: string[] = [];
