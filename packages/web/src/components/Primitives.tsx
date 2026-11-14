@@ -35,7 +35,7 @@ export function MetricCell({
 }) {
   return (
     <div className="metric-cell min-w-0 px-4 py-3.5 first:pl-0 last:pr-0 md:px-5" title={tooltip}>
-      <div className="eyebrow truncate">{label}</div>
+      <div className="eyebrow leading-snug">{label}</div>
       {loading ? (
         <div className="skeleton mt-2 h-7 w-28" />
       ) : (

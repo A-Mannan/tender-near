@@ -34,6 +34,8 @@ export interface BlockView {
     height_included: number;
     /** 8 bytes for an empty chunk; larger when it carries transactions/receipts. */
     encoded_length?: number;
+    /** Base58 zero hash when the chunk carries no transactions. */
+    tx_root?: string;
   }>;
 }
 

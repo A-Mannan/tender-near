@@ -344,8 +344,8 @@ export function Tape({
         )
       ) : (
         <div className="scroll-thin overflow-x-auto">
-          <table className="w-full min-w-[640px] border-collapse text-left md:min-w-0">
-            <thead>
+          <table className="w-full min-w-0 border-collapse text-left md:min-w-[640px]">
+            <thead className="hidden md:table-header-group">
               <tr className="bg-[var(--bg-elevated)]">
                 {["Print / Block", "Work", "Clearing", "Bid band", "Winner / Proof"].map((label, index) => (
                   <th

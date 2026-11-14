@@ -50,6 +50,8 @@ interface SealedBid {
   savedAt: number;
 }
 
+const TERMINAL_STATUSES = new Set(["Settled", "Refunded", "CancelledZeroReveals", "ExpiredNoDelivery"]);
+
 const sealKey = (jobId: string, accountId: string) =>
   `tender.seal.${CONTRACT_ID}.${jobId}.${accountId}`;
 
@@ -137,10 +139,9 @@ export function AuctionDesk({
 
   const rows = useMemo(() => {
     const list = jobs ?? [];
-    const settled = new Set(["Settled", "Refunded", "CancelledZeroReveals", "ExpiredNoDelivery"]);
     return [...list].sort((a, b) => {
-      const aOpen = settled.has(a.status) ? 1 : 0;
-      const bOpen = settled.has(b.status) ? 1 : 0;
+      const aOpen = TERMINAL_STATUSES.has(a.status) ? 1 : 0;
+      const bOpen = TERMINAL_STATUSES.has(b.status) ? 1 : 0;
       if (aOpen !== bOpen) return aOpen - bOpen;
       return Number(BigInt(b.job_id) - BigInt(a.job_id));
     });
@@ -442,6 +443,10 @@ export function AuctionDesk({
                         {action.icon}
                         {action.label}
                       </button>
+                    ) : TERMINAL_STATUSES.has(job.status) ? (
+                      <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                        {phaseLabel(phase).toLowerCase()}
+                      </span>
                     ) : (
                       <span className="font-mono text-[10px] text-[var(--text-muted)]">waiting</span>
                     )}

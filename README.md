@@ -108,9 +108,9 @@ All handlers validate query parameters and return `400` for unknown values (for 
     "work_units": "3",
     "unit_label": "kloc",
     "trigger": "buyer_accepted",
-    "settled_at_ns": "1763080000000000000",
-    "spec_sha256": "…",
-    "deliverable_sha256": "…"
+    "settled_at_ns": "1794620637680406507",
+    "spec_sha256": "90205ed8a39f73403e816ed6f60739326ade36fe6a5539c4b7b5c598152eab53",
+    "deliverable_sha256": "bbc4447c49d7fc35ef5be254a8ca56c698a2bade6c8e623e092d5ce720510ff2"
   }]
 }
 ```
@@ -121,7 +121,7 @@ Lifecycle events: `job_created`, `bid_committed`, `bid_revealed`, `auction_clear
 
 ## Quickstart
 
-Prerequisites: Node.js ≥ 22.5 (uses `node:sqlite`), Rust 1.86 with the `wasm32-unknown-unknown` target, and optionally `cargo-near` + `near-cli-rs`.
+Prerequisites: Node.js ≥ 22.5 (uses `node:sqlite`), Rust 1.86 with the `wasm32-unknown-unknown` target, `cargo-near`, and the OpenSpec CLI (`npm i -g @fission-ai/openspec`). `near-cli-rs` is optional but convenient for read-only calls.
 
 ```bash
 git clone <repo-url> tender && cd tender
@@ -183,10 +183,12 @@ Environment overrides (all optional):
 
 ```bash
 npm --prefix packages/web run build
-cd packages/web && npx playwright test
+cd packages/web
+npx playwright install chromium
+npx playwright test
 ```
 
-The default suite starts its own fresh indexer and preview server, needs no keys, and covers The Tape, the proof drawer, filters, theme persistence, error/empty states, the API contract, and both promised viewports. It reads the demo block window from `.data/testnet-demo.json` and therefore needs that file (run the testnet demo first) or an equivalent indexer window.
+The default suite starts its own fresh indexer and preview server, needs no keys, and covers The Tape, the proof drawer, filters, theme persistence, error/empty states, the API contract, and both promised viewports. It reads the demo block window from `.data/testnet-demo.json` when present; otherwise it falls back to the committed `deployments/testnet.json` window. A clean clone therefore runs the suite without local state.
 
 The opt-in lifecycle test signs with the disposable demo keys:
 
@@ -226,7 +228,7 @@ NEAR_RPC_URL=https://near-testnet.drpc.org node scripts/verify-testnet.mjs
 ### Known limitations (deliberately documented)
 
 - **Worker bonds are reveal-liveness collateral, not performance bonds.** The bond unlocks on a valid reveal and is slashed for non-reveal. A winner who fails to deliver refunds the buyer's escrow but does not lose the bond. A production system should hold the winning bond until settlement.
-- **FT escrow is permissionless and experimental.** Any contract can call `ft_on_transfer`, so a fake token can create unbacked FT-denominated jobs. The primary Tape defaults to NEAR escrow (`escrow=near`) to keep the index clean; FT Vickrey surplus refunds are fire-and-forget and may remain in the contract if the receiver is not registered on the token.
+- **FT escrow is permissionless and experimental.** Any contract can call `ft_on_transfer`, so a fake token can create unbacked FT-denominated jobs. The primary UI filters the Tape, median, spread, and win-rate queries to native NEAR escrow (`escrow=near`) so an experimental token cannot pollute the headline index; FT Vickrey surplus refunds are fire-and-forget and may remain in the contract if the receiver is not registered on the token.
 - **Deliverable hashes are anchors, not proofs of correctness.** The contract proves what was delivered and when; judging quality remains a buyer/arbiter responsibility.
 - **Arbiters are trusted addresses.** The contract enforces who may resolve and when, not how they judge.
 - **The indexer trusts the configured RPC endpoint.** It verifies receipt structure and deduplicates by receipt/log index, but a malicious RPC could omit events. Point it at your own node for stronger guarantees.
@@ -241,7 +243,7 @@ Each deviation was forced by the protocol, verified against official documentati
 1. **Worker calls attach zero NEAR because `FunctionCall` access keys cannot attach a deposit.** A restricted key only carries a gas allowance; the runtime rejects transactions with `attached_deposit > 0`. Therefore `commit_bid`, `reveal_bid`, `submit_delivery`, and `finalize_after_timeout` are non-payable. Bonds live in a pre-funded internal vault (`deposit_bond` / `withdraw_bond`) rather than being attached to each bid. The demo proves the full worker lifecycle with a restricted key. See [NEAR Access Keys](https://docs.near.org/protocol/access-keys).
 2. **NEP-141 transfers attach `1 yoctoNEAR` and require receiver storage registration.** `ft_transfer` requires exactly `1 yoctoNEAR` as a user-security confirmation, and it fails if the recipient has not registered with the token contract. The escrow contract attaches that yocto itself and rolls back via a `#[private]` callback on failure. See [NEAR Fungible Tokens](https://docs.near.org/primitives/ft) and [NEP-141](https://github.com/near/NEPs/blob/master/neps/nep-0141.md).
 3. **Storage is staked at `10^19 yoctoNEAR/byte`; the `770` free bytes do not apply to contract state.** The free allowance applies only to a bare account record. `create_job` measures the actual storage delta and charges `env::storage_byte_cost()` for the job plus bounded commit/reveal slots; the FT path measures its delta and rejects under-funded credits. See [NEAR Storage Staking](https://docs.near.org/protocol/storage/storage-staking).
-4. **Self-reported worker output length was replaced with buyer-declared `work_units` + `unit_label`.** A deterministic contract cannot verify a worker's claimed token count, and a per-unit index creates an incentive to pad it. Buyers declare the unit of work and anchor the spec; workers anchor the deliverable; The Tape computes unit price from those objective fields.
+4. **Self-reported worker output length was replaced with buyer-declared `work_units` + `unit_label`.** A contract only sees the execution environment — predecessor, attached deposit, block timestamp, and hashes — not the off-chain artifact, so a worker's claimed token count is unverifiable and a per-unit index would reward padding. Buyers declare the unit of work and anchor the spec; workers anchor the deliverable; The Tape computes unit price from those objective fields. See [NEAR Environment](https://docs.near.org/smart-contracts/anatomy/environment).
 5. **Payouts are asynchronous and can fail after the initiating receipt succeeds.** Cross-contract promises can fail (deleted receiver, unregistered FT recipient), so settlement cannot assume success. Tender uses in-flight locks and `#[private]` rollback callbacks instead of optimistic balance updates. See [NEAR cross-contract calls](https://docs.near.org/smart-contracts/anatomy/crosscontract).
 6. **Dispute resolution has a permissionless liveness fallback.** A trusted arbiter can otherwise freeze escrow forever. After `dispute_window_ns` from the dispute, anyone may settle at the original clearing price, and the phase becomes `DisputeResolutionExpired`.
 
@@ -253,15 +255,15 @@ These are the commands a judge can rerun; results below are from the final local
 
 | Gate | Command | Result |
 | --- | --- | --- |
-| Contract unit + sandbox | `cargo test --manifest-path contracts/tender/Cargo.toml` | _pending final rerun_ |
-| WASM build | `cd contracts/tender && cargo near build non-reproducible-wasm` | _pending final rerun_ |
-| Indexer tests | `npm run indexer:test` | _pending final rerun_ |
-| Web typecheck/build | `npm --prefix packages/web run build` | _pending final rerun_ |
-| Playwright (desktop + mobile) | `cd packages/web && npx playwright test` | _pending final rerun_ |
-| Live testnet tape | `NEAR_RPC_URL=https://near-testnet.drpc.org node scripts/verify-testnet.mjs` | _pending final rerun_ |
-| OpenSpec validity | `openspec validate tender-mvp --strict` | _pending final rerun_ |
+| Contract unit + sandbox | `cargo test --manifest-path contracts/tender/Cargo.toml` | 6 passed (5 unit + 1 near-sandbox), 0 failed |
+| WASM build | `cd contracts/tender && cargo near build non-reproducible-wasm` | `b77ad42d…1a73f4` (matches deployed code hash) |
+| Indexer tests | `npm run indexer:test` | 39 passed, 0 failed |
+| Web typecheck/build | `npm --prefix packages/web run build` | TypeScript clean, Vite build OK |
+| Playwright (desktop + mobile) | `cd packages/web && npx playwright test` | 8 passed, 2 skipped (opt-in write lifecycle); desktop 1440×900 + mobile 375×812 |
+| Live testnet tape | `NEAR_RPC_URL=https://near-testnet.drpc.org node scripts/verify-testnet.mjs` | 2 prints, 24 events, 595 blocks; median `0.320833` NEAR/unit, spread `2857` bps; all assertions passed |
+| OpenSpec validity | `openspec validate tender-mvp --strict` | Change is valid |
 
-Screenshots: `docs/screenshots/desktop-market.png` (1440×900) and `docs/screenshots/mobile-market.png` (375×812).
+Screenshots: `docs/screenshots/desktop-market.png` (1440px viewport, full page) and `docs/screenshots/mobile-market.png` (375px viewport, full page).
 
 ## Repository layout
 

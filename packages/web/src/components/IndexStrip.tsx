@@ -1,5 +1,5 @@
 import { ArrowRight } from "@phosphor-icons/react";
-import { bps, nearFromYocto, nearFromYoctoExact, compactNumber } from "../lib/format";
+import { bps, nearAmount, nearFromYocto, nearFromYoctoExact, compactNumber } from "../lib/format";
 import type { MedianStats, SpreadStats } from "../lib/types";
 import { MetricCell } from "./Primitives";
 
@@ -34,10 +34,11 @@ export function IndexStrip({
         loading={loading}
         value={
           hasPrints && median?.median_unit_price
-            ? `${nearFromYocto(median.median_unit_price, 5)} NEAR`
+            ? nearFromYocto(median.median_unit_price, 3)
             : "Awaiting print"
         }
-        sub={hasPrints ? `per ${median?.units[0] ?? "unit"}` : "Normalized across categories"}
+        tooltip={hasPrints ? `${nearFromYoctoExact(median?.median_unit_price)} NEAR` : undefined}
+        sub={hasPrints ? `NEAR per ${median?.units[0] ?? "unit"}` : "Normalized across categories"}
       />
       <MetricCell
         label="Competitive Spread"
@@ -45,7 +46,7 @@ export function IndexStrip({
         value={spread?.spread_bps != null ? bps(spread.spread_bps) : "Awaiting print"}
         sub={
           spread?.spread_near
-            ? `${nearFromYocto(spread.spread_near, 4)} NEAR p25–p75 unit band`
+            ? `${nearAmount(spread.spread_near, 4)} NEAR wide`
             : "Unit-price dispersion"
         }
       />
@@ -55,7 +56,7 @@ export function IndexStrip({
         value={median?.median_savings_bps != null ? bps(median.median_savings_bps) : "Awaiting print"}
         sub={
           median?.buyer_savings_near
-            ? `${nearFromYocto(median.buyer_savings_near, 4)} NEAR below reserve`
+            ? `${nearAmount(median.buyer_savings_near, 4)} NEAR saved`
             : "Reserve minus clearing"
         }
       />

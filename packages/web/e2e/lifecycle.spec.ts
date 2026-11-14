@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   CONTRACT_ID,
   api,
@@ -18,7 +19,7 @@ import {
  * keys, so submissions and CI remain read-only.
  */
 const LIFECYCLE = process.env.TENDER_E2E_LIFECYCLE === "1";
-const KEYS_PATH = resolve(__dirname, "../../../.data/testnet-keys.json");
+const KEYS_PATH = resolve(fileURLToPath(new URL("../../../.data/testnet-keys.json", import.meta.url)));
 const BUYER = `buyer.${CONTRACT_ID}`;
 const WORKER = `worker-a.${CONTRACT_ID}`;
 

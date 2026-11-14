@@ -217,9 +217,15 @@ export class Indexer {
         throw new Error(`requested block ${height} but RPC returned ${block.header.height}`);
       }
 
-      // Empty chunks are 8 bytes on the wire; skip the RPC round-trip entirely.
+      // Skip empty chunks (8 bytes on the wire) and chunks whose transaction
+      // root is the zero hash. The indexer is transaction-centric: a chunk with
+      // no transactions cannot originate a Tender event, and delayed receipts
+      // are already included in their originating transaction's outcome tree.
+      const EMPTY_TX_ROOT = "11111111111111111111111111111111";
       const chunkRefs = block.chunks.filter(
-        (chunkRef) => typeof chunkRef.encoded_length !== "number" || chunkRef.encoded_length > 8,
+        (chunkRef) =>
+          (typeof chunkRef.encoded_length !== "number" || chunkRef.encoded_length > 8) &&
+          chunkRef.tx_root !== EMPTY_TX_ROOT,
       );
       const chunks = await mapLimit(chunkRefs, 4, (chunkRef) => this.rpc.getChunk(chunkRef.chunk_hash));
 

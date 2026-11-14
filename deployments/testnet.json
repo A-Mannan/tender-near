@@ -1,0 +1,139 @@
+{
+  "network": "testnet",
+  "contract_id": "tender-hack-1114g.testnet",
+  "deployed_at": "2026-11-14T01:20:36Z",
+  "deploy_transaction": "5gyAWNw27R3T1xwMsKkgRRy2STnCvW4sdtiQWJmLTv6M",
+  "wasm_sha256": "b77ad42da7856b330b3a6007ecdad936bb103f0adde7804391822719021a73f4",
+  "rpc_url": "https://near-testnet.drpc.org",
+  "demo_generated_at": "2026-11-14T01:44:45.068Z",
+  "indexer": {
+    "start_block": 277590728,
+    "last_indexed_block": 277591322,
+    "blocks": 595,
+    "events": 24,
+    "jobs": 3,
+    "prints": 2
+  },
+  "jobs": {
+    "audit": {
+      "job_id": "3",
+      "category": "smart-contract-audit",
+      "mechanism": "VickreySecondPrice",
+      "bids_near": {
+        "worker-a.tender-hack-1114g.testnet": "0.90",
+        "worker-b.tender-hack-1114g.testnet": "1.10",
+        "worker-c.tender-hack-1114g.testnet": "1.30"
+      },
+      "winner": "worker-a.tender-hack-1114g.testnet",
+      "winning_bid_near": "0.9",
+      "runner_up_bid_near": "1.1",
+      "clearing_price_near": "1.1",
+      "status": "Settled"
+    },
+    "labeling": {
+      "job_id": "4",
+      "category": "data-labeling",
+      "mechanism": "FirstPrice",
+      "bids_near": {
+        "worker-b.tender-hack-1114g.testnet": "0.55",
+        "worker-c.tender-hack-1114g.testnet": "0.75"
+      },
+      "winner": "worker-b.tender-hack-1114g.testnet",
+      "clearing_price_near": "0.55",
+      "status": "Settled"
+    },
+    "codegen": {
+      "job_id": "5",
+      "category": "code-generation",
+      "mechanism": "VickreySecondPrice",
+      "status": "CancelledZeroReveals"
+    }
+  },
+  "tape": {
+    "total": 2,
+    "prints": [
+      {
+        "id": "tender-hack-1114g.testnet:4",
+        "category": "data-labeling",
+        "mechanism": "FirstPrice",
+        "winner": "worker-b.tender-hack-1114g.testnet",
+        "clearing_price_near": "0.55",
+        "winning_bid_near": "0.55",
+        "runner_up_bid_near": "0.75",
+        "unit_price_near": "0.275",
+        "unit_label": "1k-rows",
+        "savings_bps": 4500,
+        "worker_premium_bps": 0,
+        "trigger": "timeout_auto_settled",
+        "tx_hash": "rSDEuz5fA3QLmbEyy97u2oj3gWmUXTSg6WQrrLyUegB",
+        "explorer_url": "https://testnet.nearblocks.io/txns/rSDEuz5fA3QLmbEyy97u2oj3gWmUXTSg6WQrrLyUegB"
+      },
+      {
+        "id": "tender-hack-1114g.testnet:3",
+        "category": "smart-contract-audit",
+        "mechanism": "VickreySecondPrice",
+        "winner": "worker-a.tender-hack-1114g.testnet",
+        "clearing_price_near": "1.1",
+        "winning_bid_near": "0.9",
+        "runner_up_bid_near": "1.1",
+        "unit_price_near": "0.366666666666666666666666",
+        "unit_label": "kloc",
+        "savings_bps": 2666,
+        "worker_premium_bps": 2222,
+        "trigger": "buyer_accepted",
+        "tx_hash": "9Hkvi6XxdvdenfQBJqXdnFRH2Y4ZH31L94zWjo3UXnho",
+        "explorer_url": "https://testnet.nearblocks.io/txns/9Hkvi6XxdvdenfQBJqXdnFRH2Y4ZH31L94zWjo3UXnho"
+      }
+    ]
+  },
+  "aggregate": {
+    "median": {
+      "count": 2,
+      "median_unit_price_near": "0.320833333333333333333333",
+      "median_clearing_price_near": "0.825",
+      "volume_clearing_near": "1.65",
+      "buyer_savings_near": "0.85",
+      "median_savings_bps": 3583
+    },
+    "spread": {
+      "min_unit_price_near": "0.275",
+      "max_unit_price_near": "0.366666666666666666666666",
+      "median_unit_price_near": "0.320833333333333333333333",
+      "spread_near": "0.091666666666666666666666",
+      "spread_bps": 2857
+    },
+    "win_rate": [
+      {
+        "worker": "worker-a.tender-hack-1114g.testnet",
+        "wins": 1,
+        "reveals": 1,
+        "win_rate_bps": 10000,
+        "volume_won_near": "1.1"
+      },
+      {
+        "worker": "worker-b.tender-hack-1114g.testnet",
+        "wins": 1,
+        "reveals": 2,
+        "win_rate_bps": 5000,
+        "volume_won_near": "0.55"
+      },
+      {
+        "worker": "worker-c.tender-hack-1114g.testnet",
+        "wins": 0,
+        "reveals": 2,
+        "win_rate_bps": 0,
+        "volume_won_near": "0"
+      }
+    ]
+  },
+  "api_endpoints": [
+    "/tape",
+    "/tape/median",
+    "/tape/spread",
+    "/tape/win-rate",
+    "/jobs",
+    "/jobs/:id",
+    "/receipts/:id"
+  ],
+  "verified_at": "2026-11-14T02:02:08.415Z"
+}

@@ -26,10 +26,10 @@
 ## Risk-Ordered Tier Tracker
 - [x] **Tier 0 — Spec, Design Brief & Baseline**: OpenSpec `tender-mvp` (`proposal.md`, `design.md`, 3 capability specs, `tasks.md`) validated (`openspec validate tender-mvp --strict`), `DESIGN.md`, `LICENSE`, `.gitignore`, `progress.md`.
 - [x] **Tier 1 — Smart Contract (`contracts/tender`)**: Full lifecycle + `near-sandbox` adversarial suite + cold-context audit.
-- [ ] **Tier 2 — NEP-297 Indexer & Query API (`packages/indexer`)**: Real NEAR RPC ingestion + `/tape`, `/tape/median`, `/tape/win-rate`, `/tape/spread` + cold-context audit.
-- [ ] **Tier 3 — Market Terminal UI (`packages/web` + `e2e/`)**: Real data UI + Playwright full lifecycle + `375px`/`1440px` visual audit + cold-context review.
-- [ ] **Tier 4 — NEAR Testnet Deployment & Multi-Agent Demo (`scripts/testnet-demo.mjs`)**: Deployed contract + live settled prints on `testnet`.
-- [ ] **Tier 5 — Packaging & Clean-Clone Proof**: `README.md`, untracked human submission payload, clean-clone full-gate verification.
+- [x] **Tier 2 — NEP-297 Indexer & Query API (`packages/indexer`)**: Real NEAR RPC ingestion + `/tape`, `/tape/median`, `/tape/win-rate`, `/tape/spread` + 39 passing tests and recorded review findings.
+- [ ] **Tier 3 — Market Terminal UI (`packages/web` + `e2e/`)**: Real-data UI verified; Playwright 8 passed, 2 opt-in skips; 375px/1440px captures inspected; cold-context review pending.
+- [x] **Tier 4 — NEAR Testnet Deployment & Multi-Agent Demo (`scripts/testnet-demo.mjs`)**: Deployed contract + receipt-backed live prints verified on `testnet`.
+- [ ] **Tier 5 — Packaging & Clean-Clone Proof**: README, testnet proof, and ignored human submission payload are prepared; clean-clone full-gate verification remains pending.
 
 ## Tier 1 Audit Log (2026-11-13T20:20Z)
 
@@ -51,3 +51,28 @@
 - **FT escrow is permissionless and experimental**: any contract can call `ft_on_transfer`, so a fake token contract can create unbacked FT-denominated jobs and pollute an unfiltered FT tape. The UI's primary tape should filter to `escrow=near`; FT Vickrey surplus refunds are also fire-and-forget, so surplus to an unregistered FT receiver stays in the contract rather than becoming withdrawable. NEAR escrow is the production path demonstrated on testnet.
 
 **Verified invariants** (unit + sandbox): copied-commit replay fails; cross-job commitment replay fails; wrong-phase commit/reveal fail; reserve-exceeding reveal fails; exact ties resolve by earliest `commit_seq`; unrevealed bonds are slashed to the buyer; zero-reveal auctions refund in full; silent buyers cannot block `finalize_after_timeout`; double settlement fails; failed NEAR/FT payouts roll back and are retryable; `#[private]` callbacks reject external callers; restricted `FunctionCall` Access Key (allowance, 0-deposit) can commit/reveal/deliver/timeout-settle.
+
+## Tier 4 Live Run Log (2026-11-14)
+
+- **Fresh deployment**: `tender-hack-1114g.testnet` deployed with WASM `b77ad42d…1a73f4` at block `277588895` (`2026-11-14T01:20:36Z`), deploy tx `5gyAWNw27R3T1xwMsKkgRRy2STnCvW4sdtiQWJmLTv6M`. The earlier `1114`–`1114f` accounts were abandoned after faucet/key/RPC incidents; their keys are archived under gitignored `.data/`.
+- **Demo rerun hardening**: the script now finalizes stale open jobs (permissionless after the reveal deadline) before creating new ones, keys bid specs by role instead of assuming job IDs `0/1/2`, waits `340s` for the `240s` commit window, and bounds every JSON-RPC fetch through its body read with a `20s` abort timer. Job IDs for the accepted run are therefore `3/4/5`; `verify-testnet.mjs` reads them from `.data/testnet-demo.json` instead of hardcoding.
+- **UI correctness**: the tape, median, spread, and win-rate queries now all pass `escrow=near`, so the headline index cannot be polluted by experimental FT escrow.
+- **Playwright portability**: the config prefers `.data/testnet-demo.json` and otherwise falls back to the committed `deployments/testnet.json` block window, allowing a clean clone to run the suite without local state.
+
+## Tier 4 Final Demo & Verification (2026-11-14)
+
+- **Accepted demo run** started `2026-11-14T01:39:23Z` and completed at `2026-11-14T01:44:45Z`. Jobs: audit `3` (Vickrey), labeling `4` (FirstPrice), codegen `5` (zero reveals). All 27 transactions are recorded in `.data/testnet-demo.json` with role-keyed signers.
+- **Live clearing results**: audit winner `worker-a` at a `0.90` NEAR bid, Vickrey clearing `1.10` NEAR (runner-up `1.10`); labeling winner `worker-b` at `0.55` NEAR first-price; codegen refunded as `CancelledZeroReveals`. Labeling settled through the permissionless `finalize_after_timeout` path after the dispute window, proving the silent-buyer liveness fallback on live testnet.
+- **Receipt-backed verifier**: `NEAR_RPC_URL=https://near-testnet.drpc.org node scripts/verify-testnet.mjs` rebuilt a fresh SQLite DB over blocks `277590728..277591322` (595 blocks), indexed 24 events and 2 prints, asserted exact clearing prices, receipt IDs, aggregates, event ordering, facets, explorer links, and wrote `deployments/testnet.json`. Median unit price `0.320833333333333333333333` NEAR/unit; spread `0.091666666666666666666666` NEAR (`2857` bps); Vickrey premium `2222` bps; buyer savings `2666` bps.
+- **Verifier race fixed**: the health gate now waits for the block containing the final demo receipt (`latest_block + 10`) instead of a raw event count, so the zero-reveal refund projection is always present before assertions.
+- **Playwright hardening**: fixed ESM `__dirname` use, isolated the preview port (`4174`) from unrelated local projects, bounded the indexer to the demo window with `TENDER_CONTRACTS` filtering, and extended the cold-index budget to `480s`. The desktop and mobile market suites both run against live testnet receipts.
+
+## Tier 3 Screenshot Audit Fixes (2026-11-14)
+
+- **Decimal-NEAR formatting bug**: `/tape/spread`, `/tape/median`, and `/tape/win-rate` return already-normalized `*_near` decimal strings. The UI was passing those into the yocto formatter, so every p25/median/p75 label, buyer-savings subtitle, volume figure, and worker-volume figure rendered as `—`. Added `nearAmount()` in `packages/web/src/lib/format.ts` and replaced all `*_near` uses; the Playwright market test now asserts numeric `p25`, `median`, and `p75` output as a regression gate.
+- **Mobile tape header**: the desktop `<thead>` was visible above the mobile cards and clipped at `375px`. It is now `hidden md:table-header-group`, and the table uses `min-w-0` on mobile so cards fill the viewport.
+- **Metric labels**: `MetricCell` labels now wrap instead of truncating on narrow cards, so "Median Clearing Price", "Competitive Spread", and "Buyer Vickrey Savings" remain readable at `375px`.
+- **Terminal-state screenshot**: the market test now waits for all three demo jobs to leave `Open`, so the zero-reveal refund appears as "No reveals" instead of a stale "Awaiting clear" action.
+- **Clean-clone defaults**: Playwright's config now derives a bounded indexer window from committed deployment proof when `.data/` is absent, uses an isolated preview port, and resolves ESM paths via `import.meta.url`. The indexer skips empty transaction-root chunks to avoid unnecessary RPC fetches.
+- **Final pre-clone checks (2026-11-14T07:55Z)**: `cargo test` passed (5 unit + 1 sandbox), indexer passed 39/39, web TypeScript/build passed, strict OpenSpec validation passed, and the read-only testnet `get_job_count` check returned 6. `git diff --check` was clean; tracked files contained no `.data`, submission payload, environment, or credential paths.
+- **Final Playwright rerun (2026-11-14T07:57Z)**: 8 passed, 2 skipped (opt-in write lifecycle) in 4.6m. Desktop `1440×900` and mobile `375×812` captures regenerated and visually inspected. Both show populated real metrics, clear hierarchy, complete responsive Tape/auction desk, and the terminal zero-reveal state; no horizontal clipping observed. Independent cold-context review is in progress.

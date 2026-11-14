@@ -1,11 +1,56 @@
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
+const ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const DEMO_PATH = resolve(ROOT, ".data/testnet-demo.json");
+const CONTRACT_ID = process.env.TENDER_E2E_CONTRACT ?? "tender-hack-1114g.testnet";
+const DEPLOY_PATH = resolve(ROOT, "deployments/testnet.json");
+
+/** Prefer the local demo window; fall back to the committed deployment proof. */
+function indexerWindow(): { start: number | null; end: number | null } {
+  if (existsSync(DEMO_PATH)) {
+    const demo = JSON.parse(readFileSync(DEMO_PATH, "utf8")) as {
+      indexer_window?: { start_block_hint?: number; latest_block?: number };
+    };
+    const start = demo.indexer_window?.start_block_hint;
+    const latest = demo.indexer_window?.latest_block;
+    if (Number.isInteger(start)) {
+      // The opt-in lifecycle test creates a new job after the demo window. It
+      // starts at the chain head so it does not spend minutes replaying demo
+      // history it never asserts on.
+      if (process.env.TENDER_E2E_LIFECYCLE === "1") {
+        return { start: null, end: null };
+      }
+      // Bound the market replay to the demo window; following the live head
+      // would add thousands of unrelated blocks and slow every test run.
+      return {
+        start: start as number,
+        end: Number.isInteger(latest) ? (latest as number) + 10 : null,
+      };
+    }
+  }
+  if (existsSync(DEPLOY_PATH)) {
+    const deploy = JSON.parse(readFileSync(DEPLOY_PATH, "utf8")) as {
+      indexer?: { start_block?: number; last_indexed_block?: number };
+    };
+    const start = deploy.indexer?.start_block;
+    const last = deploy.indexer?.last_indexed_block;
+    if (Number.isInteger(start) && Number.isInteger(last)) {
+      return { start: start as number, end: (last as number) + 10 };
+    }
+  }
+  throw new Error("No indexer window found; run scripts/testnet-demo.mjs or provide deployments/testnet.json");
+}
+
+const WINDOW = indexerWindow();
 const INDEXER_PORT = Number(process.env.TENDER_E2E_INDEXER_PORT ?? 8787);
-const WEB_PORT = Number(process.env.TENDER_E2E_WEB_PORT ?? 4173);
+const WEB_PORT = Number(process.env.TENDER_E2E_WEB_PORT ?? 4174);
 
 export default defineConfig({
   testDir: "./e2e",
-  timeout: 240_000,
+  timeout: 600_000,
   expect: { timeout: 20_000 },
   fullyParallel: false,
   workers: 1,
@@ -29,7 +74,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `rm -f .data/e2e.sqlite .data/e2e.sqlite-shm .data/e2e.sqlite-wal && TENDER_DB=.data/e2e.sqlite HOST=127.0.0.1 PORT=${INDEXER_PORT} TENDER_START_BLOCK=$(node -e "const d=require('./.data/testnet-demo.json');process.stdout.write(String(d.indexer_window.start_block_hint))") TENDER_END_BLOCK= TENDER_NETWORK=testnet CORS_ORIGIN=* NEAR_RPC_URL=https://near-testnet.drpc.org INDEXER_CONCURRENCY=4 MAX_BLOCKS_PER_SYNC=100 SYNC_INTERVAL_MS=1200 node packages/indexer/dist/src/index.js`,
+      command: `rm -f .data/e2e.sqlite .data/e2e.sqlite-shm .data/e2e.sqlite-wal && TENDER_DB=.data/e2e.sqlite HOST=127.0.0.1 PORT=${INDEXER_PORT} TENDER_START_BLOCK=${WINDOW.start ?? ""} TENDER_END_BLOCK=${WINDOW.end ?? ""} TENDER_NETWORK=testnet TENDER_CONTRACTS=${CONTRACT_ID} CORS_ORIGIN=* NEAR_RPC_URL=https://near-testnet.drpc.org INDEXER_CONCURRENCY=8 MAX_BLOCKS_PER_SYNC=200 SYNC_INTERVAL_MS=1200 node packages/indexer/dist/src/index.js`,
       url: `http://127.0.0.1:${INDEXER_PORT}/health`,
       cwd: "../..",
       timeout: 300_000,
@@ -39,7 +84,7 @@ export default defineConfig({
       command: `npx vite preview --port ${WEB_PORT} --strictPort --host 127.0.0.1`,
       url: `http://127.0.0.1:${WEB_PORT}`,
       timeout: 120_000,
-      reuseExistingServer: !process.env.CI,
+      reuseExistingServer: false,
     },
   ],
 });

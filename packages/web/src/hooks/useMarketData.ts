@@ -57,9 +57,9 @@ export function useMarketData() {
     try {
       const [tape, median, spread, winRate, jobs, facets, health] = await Promise.all([
         getJson<TapeResponse>("/tape?limit=200&escrow=near"),
-        getJson<MedianStats>("/tape/median?group_by=category"),
-        getJson<SpreadStats>("/tape/spread"),
-        getJson<WinRateResponse>("/tape/win-rate?limit=12"),
+        getJson<MedianStats>("/tape/median?group_by=category&escrow=near"),
+        getJson<SpreadStats>("/tape/spread?escrow=near"),
+        getJson<WinRateResponse>("/tape/win-rate?limit=12&escrow=near"),
         getJson<JobsResponse>("/jobs?limit=40"),
         getJson<Facets>("/facets"),
         getJson<Health>("/health"),

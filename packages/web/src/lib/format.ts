@@ -15,6 +15,20 @@ export function nearFromYocto(raw: string | null | undefined, maxFraction = 4): 
   }
 }
 
+/** Format a decimal NEAR string the API already normalized (not yocto). */
+export function nearAmount(value: string | null | undefined, maxFraction = 4): string {
+  if (value === null || value === undefined || value.length === 0) return "—";
+  try {
+    const [wholePart, fraction = ""] = value.split(".");
+    const whole = wholePart ?? "0";
+    const trimmed = fraction.slice(0, maxFraction).replace(/0+$/, "");
+    const wholeText = BigInt(whole).toLocaleString("en-US");
+    return trimmed.length > 0 ? `${wholeText}.${trimmed}` : wholeText;
+  } catch {
+    return "—";
+  }
+}
+
 export function nearFromYoctoExact(raw: string | null | undefined): string {
   if (!raw) return "—";
   try {

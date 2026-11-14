@@ -1,11 +1,12 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const API_BASE = process.env.TENDER_E2E_API_URL ?? "http://127.0.0.1:8787";
 export const CONTRACT_ID =
   process.env.TENDER_E2E_CONTRACT ?? "tender-hack-1114g.testnet";
-const SCREENSHOTS = resolve(__dirname, "../../../docs/screenshots");
+const SCREENSHOTS = resolve(fileURLToPath(new URL("../../../docs/screenshots", import.meta.url)));
 
 export interface TapePrint {
   id: string;

@@ -23,10 +23,19 @@ test.describe("The Tape · live market view", () => {
       request,
       `/tape?limit=20&contract=${encodeURIComponent(CONTRACT_ID)}`,
       (value) => value.total >= 2,
-      240_000,
+      480_000,
     );
     expect(tape.items.length).toBeGreaterThanOrEqual(2);
     const first = tape.items[0];
+
+    // Wait for the zero-reveal refund too, so the desk and screenshots show the
+    // final terminal state rather than an auction that is still mid-window.
+    await waitForApi<{ total: number; items: Array<{ status: string }> }>(
+      request,
+      `/jobs?limit=50&contract=${encodeURIComponent(CONTRACT_ID)}`,
+      (value) => value.total >= 3 && value.items.every((job) => job.status !== "Open"),
+      480_000,
+    );
 
     // The API must only expose prints that settled on the deployed contract.
     for (const item of tape.items) {
@@ -41,10 +50,18 @@ test.describe("The Tape · live market view", () => {
     await expect(page.getByTestId("tape")).toBeVisible();
     await expect(page.getByTestId("analytics")).toBeVisible();
 
+    // The API returns decimal NEAR strings for spread bands; they must render
+    // as numbers, not as the yocto formatter's missing-value dash.
+    const analytics = page.getByTestId("analytics");
+    await expect(analytics).toContainText(/p25 \d/);
+    await expect(analytics).toContainText(/median \d/);
+    await expect(analytics).toContainText(/p75 \d/);
+
     // Index strip is populated from the API, never hardcoded.
     const strip = page.getByTestId("index-strip");
     await expect(strip).not.toContainText("Awaiting print", { timeout: 60_000 });
     await expect(strip).toContainText("Median Clearing Price");
+    await expect(strip).toContainText("0.32");
 
     // Tape rows appear for the project viewport.
     const rowTestId = project === "mobile" ? "tape-card" : "tape-row";
@@ -93,10 +110,12 @@ test.describe("The Tape · live market view", () => {
     const persisted = await page.evaluate(() => document.documentElement.dataset.theme);
     expect(persisted).toBe(after);
 
-    // Settled lifecycle jobs are visible on the auction desk.
+    // Settled lifecycle jobs are visible on the auction desk, including the
+    // zero-reveal refund as a terminal state rather than an open auction.
     await expect(page.getByTestId("auction-desk")).toContainText(/Settled|Assigned|Open/, {
       timeout: 60_000,
     });
+    await expect(page.getByTestId("auction-desk")).toContainText("No reveals", { timeout: 60_000 });
 
     await page.screenshot({ path: screenshotPath(project, "market"), fullPage: true });
   });
@@ -170,7 +189,7 @@ test.describe("Indexer API contract", () => {
       request,
       `/tape?limit=20&contract=${encodeURIComponent(CONTRACT_ID)}`,
       (value) => value.total >= 2,
-      240_000,
+      480_000,
     );
     for (const item of tape.items) {
       expect(item.clearing_price.raw).toMatch(/^\d+$/);

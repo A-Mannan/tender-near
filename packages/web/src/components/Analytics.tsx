@@ -7,7 +7,7 @@ import {
   TrendUp,
   UsersThree,
 } from "@phosphor-icons/react";
-import { bps, nearFromYocto } from "../lib/format";
+import { bps, nearAmount, nearFromYocto } from "../lib/format";
 import type { MedianStats, PrintView, SpreadStats, WinRateResponse } from "../lib/types";
 import { EmptyState } from "./Primitives";
 
@@ -75,7 +75,7 @@ function CategoryRows({ median }: { median: MedianStats }) {
                 />
               </div>
               <span className="shrink-0 font-mono text-[10px] text-[var(--text-muted)]">
-                {stats.count} print{stats.count === 1 ? "" : "s"} · {nearFromYocto(stats.volume_clearing_near, 3)} NEAR
+                {stats.count} print{stats.count === 1 ? "" : "s"} · {nearAmount(stats.volume_clearing_near, 3)} NEAR
               </span>
             </div>
           </div>
@@ -118,14 +118,14 @@ function SpreadBand({ spread }: { spread: SpreadStats }) {
       </div>
       <div className="mt-3 flex justify-between font-mono text-[10px] text-[var(--text-muted)]">
         <span>
-          p25 {nearFromYocto(spread.p25_unit_price_near, 4)}
+          p25 {nearAmount(spread.p25_unit_price_near, 4)}
           <span className="ml-1 opacity-70">NEAR</span>
         </span>
         <span className="text-[var(--text-primary)]">
-          median {nearFromYocto(spread.median_unit_price_near, 4)}
+          median {nearAmount(spread.median_unit_price_near, 4)}
         </span>
         <span>
-          p75 {nearFromYocto(spread.p75_unit_price_near, 4)}
+          p75 {nearAmount(spread.p75_unit_price_near, 4)}
           <span className="ml-1 opacity-70">NEAR</span>
         </span>
       </div>
@@ -157,7 +157,7 @@ function WinRateRows({ winRate }: { winRate: WinRateResponse }) {
               {row.worker.replace(/\.testnet$|\.near$/, "")}
             </div>
             <div className="mt-0.5 font-mono text-[10px] text-[var(--text-muted)]">
-              {row.wins}W / {row.reveals - row.wins}L · {nearFromYocto(row.volume_won_near, 3)} NEAR won
+              {row.wins}W / {row.reveals - row.wins}L · {nearAmount(row.volume_won_near, 3)} NEAR won
             </div>
           </div>
           <div className="w-24 shrink-0">
