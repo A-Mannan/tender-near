@@ -33,7 +33,7 @@
 ## 6. Tier 5 — Documentation, Submission Kit & Clean-Clone Gate Proof
 
 - [x] 6.1 Write comprehensive `README.md` (Tender overview, architecture diagram, mechanism design, setup/build/test/run commands, `testnet` deployment proof, API reference, and `"Design deviations"` section citing official `docs.near.org` URLs) and untracked human-only submission helper (gitignored `submission-payload.json` with `<HUMAN>` placeholders), verifying `git check-ignore submission-payload.json .data/testnet-keys.json` succeeds and `git ls-files | grep -E '^(\.data/|submission-payload\.json|\.near-credentials/)'` returns no matches.
-- [ ] 6.2 Clone the repository into a fresh isolated directory (`/tmp/opencode/tender-clean-verify`), run every build and test gate from scratch (`cargo test`, indexer tests, web build, Playwright E2E, testnet read check), and verify every gate exits 0 cleanly.
+- [ ] 6.2 Clone the repository into a fresh isolated directory (`/tmp/opencode/tender-clean-verify`), run every build and test gate from scratch (`cargo test`, indexer tests, web build, Playwright E2E, testnet read check), and verify every gate exits 0 cleanly. (First attempt exposed an out-of-sync npm lockfile; fixed locally, rerun pending.)
 
 ## Workflow follow-up
 
