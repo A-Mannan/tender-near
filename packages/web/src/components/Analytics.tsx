@@ -21,7 +21,7 @@ function PanelHeader({
   hint?: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-3 border-b border-[var(--border-hairline)] px-4 py-3">
+    <div className="flex items-start justify-between gap-3 border-b border-[var(--border-hairline)] px-4 py-2.5">
       <div className="flex min-w-0 items-center gap-2">
         <span className="text-[var(--text-muted)]">{icon}</span>
         <h2 className="truncate text-[13px] font-semibold tracking-[-0.01em]">{title}</h2>
@@ -226,64 +226,72 @@ export function Analytics({
 }) {
   if (loading) {
     return (
-      <section className="grid gap-4 lg:grid-cols-3" aria-label="Market analytics loading">
-        {[0, 1, 2].map((key) => (
-          <div key={key} className="panel">
-            <div className="border-b border-[var(--border-hairline)] px-4 py-3">
-              <div className="skeleton h-3 w-32" />
+      <section className="panel overflow-hidden" aria-label="Market analytics loading">
+        <div className="grid divide-y divide-[var(--border-hairline)] lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+          {[0, 1, 2].map((key) => (
+            <div key={key} aria-hidden="true">
+              <div className="border-b border-[var(--border-hairline)] px-4 py-2.5">
+                <div className="skeleton h-3 w-32" />
+              </div>
+              <div className="space-y-3 px-4 py-4">
+                <div className="skeleton h-8 w-full" />
+                <div className="skeleton h-8 w-full" />
+                <div className="skeleton h-8 w-full" />
+              </div>
             </div>
-            <div className="space-y-3 px-4 py-4">
-              <div className="skeleton h-8 w-full" />
-              <div className="skeleton h-8 w-full" />
-              <div className="skeleton h-8 w-full" />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
     );
   }
 
   return (
-    <section className="grid gap-4 lg:grid-cols-3" aria-label="Market analytics" data-testid="analytics">
-      <div className="panel min-w-0">
-        <PanelHeader
-          icon={<ChartLineUp size={15} />}
-          title="Category unit curves"
-          hint={median ? `${median.priced_count} priced` : undefined}
-        />
-        {median ? <CategoryRows median={median} /> : <EmptyState title="No index yet." body="The tape has no settled prints." />}
-      </div>
-
-      <div className="panel min-w-0">
-        <PanelHeader
-          icon={<TrendUp size={15} />}
-          title="Competitive spread"
-          hint={spread?.count ? `${spread.count} prints` : undefined}
-        />
-        {spread && spread.count > 0 ? (
-          <SpreadBand spread={spread} />
-        ) : (
-          <EmptyState
-            title="Spread is undefined."
-            body="A p25–p75 unit band appears after settled prints with distinct unit rates."
+    <section
+      className="panel overflow-hidden"
+      aria-label="Market analytics"
+      data-testid="analytics"
+    >
+      <div className="grid divide-y divide-[var(--border-hairline)] lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+        <div className="min-w-0">
+          <PanelHeader
+            icon={<ChartLineUp size={15} />}
+            title="Category unit curves"
+            hint={median ? `${median.priced_count} priced` : undefined}
           />
-        )}
-      </div>
+          {median ? <CategoryRows median={median} /> : <EmptyState title="No index yet." body="The tape has no settled prints." />}
+        </div>
 
-      <div className="panel min-w-0">
-        <PanelHeader icon={<UsersThree size={15} />} title="Agent win rates" hint="revealed bids" />
-        {winRate ? (
-          <WinRateRows winRate={winRate} />
-        ) : (
-          <EmptyState title="No agent history." body="Revealed bids build the worker leaderboard." />
-        )}
-        <div className="border-t border-[var(--border-hairline)]">
-          <div className="flex items-center gap-2 px-4 py-2.5">
-            <SealCheck size={14} className="text-[var(--text-muted)]" />
-            <span className="eyebrow flex-1">Settlement mix</span>
-            <ArrowUpRight size={12} className="text-[var(--text-muted)]" />
+        <div className="min-w-0">
+          <PanelHeader
+            icon={<TrendUp size={15} />}
+            title="Competitive spread"
+            hint={spread?.count ? `${spread.count} prints` : undefined}
+          />
+          {spread && spread.count > 0 ? (
+            <SpreadBand spread={spread} />
+          ) : (
+            <EmptyState
+              title="Spread is undefined."
+              body="A p25–p75 unit band appears after settled prints with distinct unit rates."
+            />
+          )}
+        </div>
+
+        <div className="min-w-0">
+          <PanelHeader icon={<UsersThree size={15} />} title="Agent win rates" hint="revealed bids" />
+          {winRate ? (
+            <WinRateRows winRate={winRate} />
+          ) : (
+            <EmptyState title="No agent history." body="Revealed bids build the worker leaderboard." />
+          )}
+          <div className="border-t border-[var(--border-hairline)]">
+            <div className="flex items-center gap-2 px-4 py-2.5">
+              <SealCheck size={14} className="text-[var(--text-muted)]" />
+              <span className="eyebrow flex-1">Settlement mix</span>
+              <ArrowUpRight size={12} className="text-[var(--text-muted)]" />
+            </div>
+            <SettlementMix prints={prints} />
           </div>
-          <SettlementMix prints={prints} />
         </div>
       </div>
     </section>

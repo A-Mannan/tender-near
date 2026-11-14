@@ -65,8 +65,8 @@ export default function App() {
         signerLabel={signer?.kind === "local" ? "local testnet key" : signer?.kind === "wallet" ? "web wallet" : null}
       />
 
-      <main className="mx-auto w-full max-w-[1440px] space-y-5 px-4 py-5 md:px-6 md:py-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)] lg:items-center">
+      <main className="mx-auto w-full max-w-[1440px] space-y-4 px-3 py-4 md:px-5 md:py-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(600px,1.35fr)] lg:items-center">
           <MissionHeader settledPrints={state.median?.count ?? 0} onHowItWorks={() => setHowOpen(true)} />
           <IndexStrip median={state.median} spread={state.spread} loading={state.loading} />
         </div>
@@ -82,15 +82,11 @@ export default function App() {
           />
         ) : null}
 
-        <Analytics
-          median={state.median}
-          spread={state.spread}
-          winRate={state.winRate}
-          prints={prints}
-          loading={state.loading}
-        />
-
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div
+          id="market-workspace"
+          tabIndex={-1}
+          className="grid scroll-mt-16 items-start gap-4 xl:grid-cols-[minmax(0,1.65fr)_minmax(360px,1fr)]"
+        >
           <Tape
             prints={prints}
             loading={state.loading}
@@ -107,6 +103,14 @@ export default function App() {
             onPostJob={() => setCreateOpen(true)}
           />
         </div>
+
+        <Analytics
+          median={state.median}
+          spread={state.spread}
+          winRate={state.winRate}
+          prints={prints}
+          loading={state.loading}
+        />
 
         <details className="panel group px-4 py-3">
           <summary className="flex cursor-pointer items-center gap-2 text-[12px] font-semibold text-[var(--text-secondary)] marker:content-none">
@@ -153,6 +157,15 @@ export default function App() {
             <span aria-hidden="true">/</span>
             <span>NEP-297 tender v1.0.0</span>
             <span aria-hidden="true">/</span>
+            <a
+              className="underline decoration-[var(--border-strong)] underline-offset-2 hover:text-[var(--text-primary)]"
+              href="/SKILL.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Agent skill <ArrowSquareOut size={10} className="inline" />
+            </a>
+            <span aria-hidden="true">/</span>
             <span>API {API_BASE}</span>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 font-mono text-[10px] text-[var(--text-muted)]">
@@ -171,7 +184,6 @@ export default function App() {
         </div>
       </footer>
 
-      <SignerDialog open={signerOpen} onClose={() => setSignerOpen(false)} onConnected={onConnected} />
       <CreateJobDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
@@ -180,6 +192,7 @@ export default function App() {
         onNeedSigner={needSigner}
         onCreated={() => void refresh()}
       />
+      <SignerDialog open={signerOpen} onClose={() => setSignerOpen(false)} onConnected={onConnected} />
       <HowItWorksDialog open={howOpen} onClose={() => setHowOpen(false)} />
     </div>
   );

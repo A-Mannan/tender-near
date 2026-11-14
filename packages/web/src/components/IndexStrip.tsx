@@ -13,19 +13,32 @@ export function IndexStrip({
   loading: boolean;
 }) {
   const hasPrints = (median?.count ?? 0) > 0;
+  const unitScope =
+    median && median.units.length === 1
+      ? `NEAR per ${median.units[0]}`
+      : median && median.units.length > 1
+        ? `NEAR / unit · ${median.units.length} types`
+        : "Normalized across categories";
+
   return (
-    <section aria-label="Consolidated market index" data-testid="index-strip" className="panel metric-grid px-4 md:px-5">
+    <section
+      aria-label="Consolidated market index"
+      data-testid="index-strip"
+      className="panel metric-grid overflow-hidden"
+    >
       <MetricCell
+        accent
         label="Median Clearing Price"
         loading={loading}
         value={hasPrints ? `${nearFromYocto(median?.median_clearing_price, 4)} NEAR` : "Awaiting print"}
         sub={
           hasPrints ? (
             <span title={nearFromYoctoExact(median?.median_clearing_price)}>
-              {compactNumber(median?.count)} settled prints
+              {compactNumber(median?.count)} print{median?.count === 1 ? "" : "s"}
+              {median?.volume_clearing_near ? ` · ${nearAmount(median.volume_clearing_near, 3)} NEAR vol` : ""}
             </span>
           ) : (
-            "No settled NEAR-escrowed jobs yet"
+            "No settled NEAR jobs"
           )
         }
       />
@@ -38,7 +51,7 @@ export function IndexStrip({
             : "Awaiting print"
         }
         tooltip={hasPrints ? `${nearFromYoctoExact(median?.median_unit_price)} NEAR` : undefined}
-        sub={hasPrints ? `NEAR per ${median?.units[0] ?? "unit"}` : "Normalized across categories"}
+        sub={hasPrints ? unitScope : "Normalized across categories"}
       />
       <MetricCell
         label="Competitive Spread"
@@ -46,7 +59,7 @@ export function IndexStrip({
         value={spread?.spread_bps != null ? bps(spread.spread_bps) : "Awaiting print"}
         sub={
           spread?.spread_near
-            ? `${nearAmount(spread.spread_near, 4)} NEAR wide`
+            ? `${nearAmount(spread.spread_near, 4)} NEAR p25–p75`
             : "Unit-price dispersion"
         }
       />
@@ -56,7 +69,7 @@ export function IndexStrip({
         value={median?.median_savings_bps != null ? bps(median.median_savings_bps) : "Awaiting print"}
         sub={
           median?.buyer_savings_near
-            ? `${nearAmount(median.buyer_savings_near, 4)} NEAR saved`
+            ? `${nearAmount(median.buyer_savings_near, 4)} NEAR below reserve`
             : "Reserve minus clearing"
         }
       />
@@ -64,7 +77,13 @@ export function IndexStrip({
   );
 }
 
-const STEPS = ["Escrow Job", "Sealed Commit", "Hash Reveal", "Vickrey Clear", "Deliver & Print"];
+const STEPS = [
+  ["01", "Escrow", "Escrow the reserve"],
+  ["02", "Seal", "Seal a SHA-256 bid"],
+  ["03", "Reveal", "Reveal the sealed bid"],
+  ["04", "Clear", "Clear the auction"],
+  ["05", "Print", "Deliver, settle, and print"],
+] as const;
 
 export function MissionHeader({
   settledPrints,
@@ -74,37 +93,38 @@ export function MissionHeader({
   onHowItWorks: () => void;
 }) {
   return (
-    <div className="flex min-w-0 flex-col justify-between gap-5 py-1">
+    <div className="flex min-w-0 flex-col justify-between gap-3.5">
       <div>
-        <div className="eyebrow">NEAR Protocol · AI labor clearing</div>
-        <h1 className="mt-2 max-w-[22ch] text-[28px] font-semibold leading-[1.08] tracking-[-0.03em] md:text-[34px]">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="eyebrow">NEAR Testnet · Sealed-Bid AI Labor Clearinghouse</span>
+        </div>
+        <h1 className="mt-1 text-[25px] font-semibold leading-[1.08] tracking-[-0.035em] text-[var(--text-primary)] md:text-[29px]">
           The public price of AI labor.
         </h1>
-        <p className="mt-2.5 max-w-[46ch] text-[13px] leading-relaxed text-[var(--text-secondary)] md:text-[14px]">
-          Sealed-bid reverse auctions settle agent work on NEAR, then print every clearing price to one open tape.
+        <p className="mt-1.5 max-w-[54ch] text-[12.5px] leading-[1.45] text-[var(--text-secondary)]">
+          Escrowed by humans or agents. Cleared between sealed worker-agent bids. Every verified settlement prints to one receipt-backed tape.
         </p>
       </div>
 
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2" aria-label="Clearing lifecycle">
-          {STEPS.map((step, index) => (
-            <div key={step} className="lifecycle-step">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[3px] border border-[var(--border-strong)] bg-[var(--bg-surface)] font-mono text-[10px] text-[var(--text-secondary)]">
-                {index + 1}
+        <ol className="stage-track" aria-label="Five-stage clearing lifecycle">
+          {STEPS.map(([num, label, description]) => (
+            <li key={num} className="stage-step" data-state="guide" title={description}>
+              <span aria-hidden="true" className="stage-bar" />
+              <span className="stage-label normal-case tracking-normal">
+                <span className="mr-1 text-[var(--accent-primary)]">{num}</span>
+                {label}
               </span>
-              <span className="whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--text-secondary)]">
-                {step}
-              </span>
-            </div>
+            </li>
           ))}
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-3">
+        </ol>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-2">
           <button type="button" className="btn btn-sm btn-secondary" onClick={onHowItWorks}>
             How clearing works
-            <ArrowRight size={13} />
+            <ArrowRight size={12} />
           </button>
           <span className="font-mono text-[10px] text-[var(--text-muted)]">
-            {settledPrints} settled print{settledPrints === 1 ? "" : "s"} · Vickrey & first-price
+            {settledPrints} settled print{settledPrints === 1 ? "" : "s"} · native NEAR index
           </span>
         </div>
       </div>

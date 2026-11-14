@@ -1,5 +1,6 @@
 import {
   ArrowsClockwise,
+  ArrowSquareOut,
   Moon,
   Plus,
   SignOut,
@@ -37,46 +38,62 @@ export function TopBar({
   const synced = health?.indexer.last_indexed_height ?? null;
   const latest = health?.latest_block?.height ?? null;
   const behind = synced !== null && latest !== null ? Math.max(0, latest - synced) : null;
+  const explorerHost = NEAR_NETWORK === "mainnet" ? "nearblocks.io" : "testnet.nearblocks.io";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--border-hairline)] bg-[color-mix(in_srgb,var(--bg-canvas)_88%,transparent)] backdrop-blur-md">
-      <div className="mx-auto flex h-14 w-full max-w-[1440px] items-center justify-between gap-3 px-4 md:px-6">
-        <div className="flex min-w-0 items-center gap-3">
+    <>
+      <a href="#market-workspace" className="skip-link">
+        Skip to market workspace
+      </a>
+      <header className="sticky top-0 z-40 border-b border-[var(--border-hairline)] bg-[color-mix(in_srgb,var(--bg-surface)_96%,transparent)] backdrop-blur-md">
+        <div className="mx-auto flex h-[52px] w-full max-w-[1440px] items-center justify-between gap-2.5 px-3.5 md:px-6">
+        <div className="flex min-w-0 items-center gap-2.5">
           <Logo />
           <div className="flex min-w-0 items-baseline gap-2">
-            <span className="text-[15px] font-semibold tracking-[-0.02em]">Tender</span>
-            <span className="hidden font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--text-muted)] sm:inline">
+            <span className="text-[15px] font-semibold tracking-[-0.025em] text-[var(--text-primary)]">Tender</span>
+            <span className="hidden font-mono text-[10px] font-semibold uppercase tracking-[0.09em] text-[var(--text-muted)] sm:inline">
               The Tape
             </span>
           </div>
-          <span className="hidden h-4 w-px bg-[var(--border-hairline)] sm:block" />
-          <div className="hidden min-w-0 items-center gap-2 sm:flex">
-            <Dot tone={health?.ok === false ? "warn" : "good"} />
-            <span className="font-mono text-[10px] uppercase tracking-[0.07em] text-[var(--text-secondary)]">
+
+          <span className="hidden h-4 w-px bg-[var(--border-hairline)] md:block" />
+
+          <div className="hidden min-w-0 items-center gap-2 md:flex">
+            <span className="inline-flex items-center gap-1.5 rounded-[3px] border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.05em] text-[var(--text-secondary)]">
+              <Dot tone={health?.ok === false ? "warn" : "good"} />
               NEAR {NEAR_NETWORK}
             </span>
             <a
-              href={`https://testnet.nearblocks.io/address/${CONTRACT_ID}`}
+              href={`https://${explorerHost}/address/${CONTRACT_ID}`}
               target="_blank"
               rel="noreferrer"
-              className="max-w-[180px] truncate font-mono text-[10px] text-[var(--text-muted)] underline decoration-[var(--border-strong)] underline-offset-2 hover:text-[var(--text-primary)]"
-              title={CONTRACT_ID}
+              className="inline-flex max-w-[200px] items-center gap-1 truncate font-mono text-[10.5px] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              title={`Clearinghouse contract: ${CONTRACT_ID}`}
             >
-              {hashShort(CONTRACT_ID, 14, 8)}
+              <span className="truncate underline decoration-[var(--border-strong)] underline-offset-2">
+                {hashShort(CONTRACT_ID, 14, 8)}
+              </span>
+              <ArrowSquareOut size={11} className="shrink-0 text-[var(--text-muted)]" />
             </a>
+            <span className="hidden rounded-[3px] border border-[color-mix(in_srgb,var(--status-reveal)_36%,transparent)] bg-[var(--status-reveal-subtle)] px-1.5 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.05em] text-[var(--status-reveal)] xl:inline-block">
+              Testnet · No real funds
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <div className="mr-1 hidden items-center gap-2 lg:flex">
-            <span className="font-mono text-[10px] text-[var(--text-muted)]">
-              {synced === null ? "syncing" : `blk ${synced.toLocaleString("en-US")}`}
-              {behind !== null && behind > 3 ? ` · +${behind}` : ""}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <div className="mr-1 hidden items-center gap-2 rounded-[3px] border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-2.5 py-1 lg:flex">
+            <span className="numeric font-mono text-[10.5px] font-medium text-[var(--text-secondary)]">
+              {synced === null ? "indexing…" : `blk ${synced.toLocaleString("en-US")}`}
+              {behind !== null && behind > 3 ? ` · -${behind}` : ""}
             </span>
             {health?.indexer.last_sync_at ? (
-              <span className="font-mono text-[10px] text-[var(--text-muted)]">
-                {timestampShort(Date.parse(health.indexer.last_sync_at) * 1_000_000)}
-              </span>
+              <>
+                <span className="h-3 w-px bg-[var(--border-hairline)]" aria-hidden="true" />
+                <span className="numeric font-mono text-[10px] text-[var(--text-muted)]">
+                  {timestampShort(Date.parse(health.indexer.last_sync_at) * 1_000_000)}
+                </span>
+              </>
             ) : null}
           </div>
 
@@ -85,9 +102,9 @@ export function TopBar({
             className="icon-btn"
             onClick={onRefresh}
             aria-label="Sync market tape"
-            title="Sync now"
+            title="Sync market tape"
           >
-            <ArrowsClockwise size={16} className={refreshing ? "animate-spin" : ""} />
+            <ArrowsClockwise size={15} className={refreshing ? "animate-spin" : ""} />
           </button>
           <button
             type="button"
@@ -96,42 +113,48 @@ export function TopBar({
             aria-label={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
             title={`Switch to ${theme === "light" ? "dark" : "light"} theme`}
           >
-            {theme === "light" ? <Moon size={16} /> : <Sun size={16} />}
+            {theme === "light" ? <Moon size={15} /> : <Sun size={15} />}
           </button>
 
           {accountId ? (
             <div className="flex items-center gap-1">
               <span
-                className="hidden items-center gap-1.5 rounded-[4px] border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-2 py-1 font-mono text-[10px] text-[var(--text-secondary)] sm:flex"
+                className="hidden items-center gap-1.5 rounded-[4px] border border-[var(--border-strong)] bg-[var(--bg-elevated)] px-2.5 py-1 font-mono text-[10.5px] font-medium text-[var(--text-primary)] sm:inline-flex"
                 title={signerLabel ? `${accountId} · ${signerLabel}` : accountId}
               >
                 <Dot tone="good" />
-                {hashShort(accountId, 10, 6)}
+                <span>{hashShort(accountId, 10, 6)}</span>
+                {signerLabel ? (
+                  <span className="hidden border-l border-[var(--border-hairline)] pl-1.5 text-[9.5px] text-[var(--text-muted)] xl:inline">
+                    {signerLabel}
+                  </span>
+                ) : null}
               </span>
               <button
                 type="button"
                 className="icon-btn"
                 onClick={onDisconnect}
                 aria-label="Disconnect wallet"
-                title="Disconnect wallet"
+                title={`Disconnect ${accountId}`}
               >
-                <SignOut size={16} />
+                <SignOut size={15} />
               </button>
             </div>
           ) : (
             <button type="button" data-testid="connect-button" className="btn btn-secondary" onClick={onConnect}>
-              <Wallet size={15} />
+              <Wallet size={14} />
               <span className="hidden sm:inline">Connect</span>
             </button>
           )}
 
           <button type="button" data-testid="post-job-button" className="btn btn-primary" onClick={onPostJob}>
-            <Plus size={15} weight="bold" />
+            <Plus size={14} weight="bold" />
             <span className="hidden sm:inline">Post Escrowed Job</span>
             <span className="sm:hidden">Post Job</span>
           </button>
         </div>
       </div>
-    </header>
+      </header>
+    </>
   );
 }

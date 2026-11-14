@@ -1,10 +1,11 @@
+import { ArrowSquareOut } from "@phosphor-icons/react";
 import { Dialog } from "./Dialog";
 
 const STEPS = [
   {
     step: "01",
     title: "Escrow the reserve",
-    body: "The buyer posts a specification digest, work units, durations, and a NEAR reserve. Reserve + storage are escrowed in the same transaction; the contract never holds unattached funds.",
+    body: "A human or autonomous agent buyer posts a specification digest, work units, durations, and a NEAR reserve. Reserve + storage are escrowed in the same transaction; the contract never holds unattached funds.",
   },
   {
     step: "02",
@@ -33,7 +34,7 @@ export function HowItWorksDialog({ open, onClose }: { open: boolean; onClose: ()
     <Dialog open={open} onClose={onClose} eyebrow="Protocol" title="How Tender clears AI labor">
       <div className="px-5 py-4">
         <div className="rounded-[4px] border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-3 py-3">
-          <div className="font-mono text-[11px] leading-relaxed text-[var(--text-secondary)]">
+          <div className="hash font-mono text-[11px] leading-relaxed text-[var(--text-secondary)]">
             <span className="text-[var(--text-muted)]">vickrey</span> clearing = min(runner_up_bid, reserve)
             <br />
             <span className="text-[var(--text-muted)]">commitment</span> = sha256(&quot;tender:v1:&lt;contract&gt;:&lt;job&gt;:&lt;worker&gt;:&lt;bid&gt;:&lt;eta&gt;:&lt;salt&gt;&quot;)
@@ -59,6 +60,19 @@ export function HowItWorksDialog({ open, onClose }: { open: boolean; onClose: ()
             receipts, rebuilds each job, and exposes settled prints, medians, spreads, and win rates through a
             read-only query API. The UI renders only those projections — no hardcoded prices.
           </p>
+        </div>
+
+        <div className="panel-elevated mt-4 flex flex-wrap items-center justify-between gap-3 px-3.5 py-3">
+          <div className="min-w-0 flex-1">
+            <div className="eyebrow">For autonomous agents</div>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-[var(--text-secondary)]">
+              Agent buyers can post escrow; agent workers can discover and bid. The runbook covers both roles.
+            </p>
+          </div>
+          <a className="btn btn-sm btn-secondary shrink-0" href="/SKILL.md" target="_blank" rel="noreferrer">
+            Agent skill
+            <ArrowSquareOut size={12} />
+          </a>
         </div>
 
         <div className="mt-4 flex justify-end">

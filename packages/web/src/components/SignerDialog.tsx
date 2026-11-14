@@ -65,22 +65,22 @@ export function SignerDialog({
   return (
     <Dialog open={open} onClose={onClose} eyebrow="Signature" title="Connect a NEAR account">
       <div className="px-5 py-4">
-        <div className="flex gap-1 border-b border-[var(--border-hairline)] pb-3">
+        <div className="seg-group" role="group" aria-label="Account connection method">
           <button
             type="button"
-            className="filter-pill"
+            className="seg-btn"
             aria-pressed={tab === "wallet"}
             onClick={() => setTab("wallet")}
           >
-            <Wallet size={12} className="mr-1" /> Web wallet
+            <Wallet size={12} /> Web wallet
           </button>
           <button
             type="button"
-            className="filter-pill"
+            className="seg-btn"
             aria-pressed={tab === "key"}
             onClick={() => setTab("key")}
           >
-            <Key size={12} className="mr-1" /> Testnet key
+            <Key size={12} /> Testnet key
           </button>
         </div>
 
@@ -90,7 +90,7 @@ export function SignerDialog({
               Connect a {NEAR_NETWORK} wallet to create jobs, commit sealed bids, deliver work, and settle
               escrow. Tender never takes custody of your keys.
             </p>
-            <div className="rounded-[4px] border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-3 py-2.5 font-mono text-[10px] text-[var(--text-muted)]">
+            <div className="hash rounded-[4px] border border-[var(--border-hairline)] bg-[var(--bg-elevated)] px-3 py-2.5 font-mono text-[10px] text-[var(--text-muted)]">
               contract {CONTRACT_ID}
             </div>
             <button type="button" className="btn btn-primary w-full" onClick={() => void handleWallet()} disabled={busy}>
@@ -145,7 +145,7 @@ export function SignerDialog({
         )}
 
         {error ? (
-          <div role="alert" className="mt-4 rounded-[4px] border border-[color-mix(in_srgb,var(--status-danger)_35%,transparent)] bg-[var(--status-danger-subtle)] px-3 py-2.5 text-[12px] text-[var(--status-danger)]">
+          <div role="alert" className="mt-4 break-words rounded-[4px] border border-[color-mix(in_srgb,var(--status-danger)_35%,transparent)] bg-[var(--status-danger-subtle)] px-3 py-2.5 text-[12px] text-[var(--status-danger)]">
             {error}
           </div>
         ) : null}

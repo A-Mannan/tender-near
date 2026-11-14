@@ -28,3 +28,9 @@ test-results/
 *credentials*.json
 submission-payload.json
 .near-credentials/
+
+# Local demo film production artifacts (not published)
+/demo/
+/docs/demo/
+/docs/promo/
+/promo/

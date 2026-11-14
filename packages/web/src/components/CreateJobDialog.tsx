@@ -197,7 +197,7 @@ export function CreateJobDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} eyebrow="Post escrow" title="Create a sealed-bid job">
+    <Dialog open={open} onClose={onClose} eyebrow="Post escrow" title="Create a sealed-bid job" width="840px">
       {done ? (
         <div className="px-5 py-6">
           <div className="flex items-center gap-2 text-[15px] font-semibold text-[var(--accent-primary)]">
@@ -242,6 +242,13 @@ export function CreateJobDialog({
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
+              <div className="form-section-heading sm:col-span-2">
+                <span className="numeric text-[var(--accent-primary)]">01</span>
+                <span>Work &amp; acceptance</span>
+                <span className="ml-auto hidden font-mono text-[9px] font-normal normal-case tracking-normal text-[var(--text-muted)] sm:inline">
+                  public metadata · local spec digest
+                </span>
+              </div>
               <div className="sm:col-span-2">
                 <Field label="Job title" htmlFor="job-title" help="Public on the tape. 1–140 characters.">
                   <input
@@ -271,7 +278,7 @@ export function CreateJobDialog({
                 </datalist>
               </Field>
 
-              <Field label="Auction mechanism" htmlFor="job-mechanism">
+              <Field label="Auction mechanism" htmlFor="job-mechanism" help="Vickrey clears at min(runner-up, reserve).">
                 <select
                   id="job-mechanism"
                   className="select"
@@ -351,6 +358,14 @@ export function CreateJobDialog({
                 />
               </Field>
 
+              <div className="form-section-heading mt-1 sm:col-span-2">
+                <span className="numeric text-[var(--accent-primary)]">02</span>
+                <span>Clearing &amp; collateral</span>
+                <span className="ml-auto hidden font-mono text-[9px] font-normal normal-case tracking-normal text-[var(--text-muted)] sm:inline">
+                  exact yoctoNEAR accounting
+                </span>
+              </div>
+
               <Field label="Reserve price (NEAR)" htmlFor="job-reserve" help="Escrowed up-front. Bids cannot exceed it.">
                 <input
                   id="job-reserve"
@@ -392,8 +407,14 @@ export function CreateJobDialog({
               </Field>
             </div>
 
-            <div className="mt-5">
-              <div className="eyebrow mb-1.5">Durations</div>
+            <div className="form-section-heading mt-5">
+              <span className="numeric text-[var(--accent-primary)]">03</span>
+              <span>Window schedule</span>
+              <span className="ml-auto font-mono text-[9px] font-normal normal-case tracking-normal text-[var(--text-muted)]">
+                commit → reveal → delivery → dispute
+              </span>
+            </div>
+            <div className="mt-2">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Field label="Commit (s)" htmlFor="job-commit">
                   <input
@@ -456,7 +477,7 @@ export function CreateJobDialog({
             </div>
           ) : null}
 
-          <div className="flex items-center justify-between gap-3 px-5 py-4">
+          <div className="sticky bottom-0 z-[5] flex items-center justify-between gap-3 border-t border-[var(--border-hairline)] bg-[var(--bg-surface)] px-5 py-3.5">
             <span className="hidden items-center gap-1.5 font-mono text-[9px] text-[var(--text-muted)] sm:flex">
               <Gavel size={12} />
               escrow funds the reserve; surplus is refunded
