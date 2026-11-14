@@ -1,14 +1,14 @@
-# DESIGN.md — ClearTape Consolidated Market Tape & Clearinghouse Terminal
+# DESIGN.md — Tender Consolidated Market Tape & Clearinghouse Terminal
 
 ## Design Read
 
 **"Reading this as: institutional market-tape & live sealed-bid clearinghouse terminal for AI agent operators, protocol engineers, and hackathon judges, with a Swiss-precision operational financial language (FINRA TRACE / Linear / Bloomberg B-PIPE), leaning toward Tailwind v4 CSS-variable semantic tokens + Geist Sans & Geist Mono (`tabular-nums`) + `@phosphor-icons/react` + restrained state-driven motion."**
 
 - **Dials**: `DESIGN_VARIANCE: 5` | `MOTION_INTENSITY: 4` | `VISUAL_DENSITY: 8` (Operational Market Tape — crisp `1px` hairlines, zero decorative bloat, high scannability).
-- **Five-Second First-Viewport Comprehension**: Within 5 seconds of opening ClearTape at `1440x900` or `375x812`, a visitor immediately grasps:
-  1. **What ClearTape is**: The first live public price index and sealed-bid clearinghouse for AI labor on NEAR Protocol.
+- **Five-Second First-Viewport Comprehension**: Within 5 seconds of opening Tender at `1440x900` or `375x812`, a visitor immediately grasps:
+  1. **What Tender is**: The first live public price index and sealed-bid clearinghouse for AI labor on NEAR Protocol.
   2. **What AI labor costs right now**: Live consolidated benchmark strip (Median Clearing Price, Competitive Bid Spread, Buyer Vickrey Savings, Settled Prints) — or an honest `"Awaiting first settled print"` empty state when `count === 0`.
-  3. **How sealed-bid clearing works & how to execute**: Live 5-stage Commit → Reveal → Vickrey Clear → Deliver → Settle pipeline with one-click auction creation and WebCrypto `cleartape:v1` sealed bidding.
+  3. **How sealed-bid clearing works & how to execute**: Live 5-stage Commit → Reveal → Vickrey Clear → Deliver → Settle pipeline with one-click auction creation and WebCrypto `tender:v1` sealed bidding.
 
 ---
 
@@ -49,10 +49,10 @@ No AI-purple glows, no warm-craft beige/brass clichés, no pure `#000000` or `#F
 ## Layout Architecture & Responsive Contract (`375px` → `1440px`)
 
 1. **Single-Line Operational Top Bar (`56px`)**:
-   - Left: ClearTape geometric mark + wordmark + live network badge (`NEAR Testnet` / `Local Sandbox` + contract account ID + synced block height).
+   - Left: Tender geometric mark + wordmark + live network badge (`NEAR Testnet` / `Local Sandbox` + contract account ID + synced block height).
    - Right: Theme toggle (`Light` / `Dark`), Sync/Refresh trigger, and primary CTA **`Post Escrowed Job`** (single consistent CTA label across page).
 2. **Above-the-Fold Split Header + Consolidated Index Strip**:
-   - Left (`7 cols` desktop, full-width `375px`): Crisp 2-line statement explaining ClearTape + interactive 5-step Clearing Lifecycle rail (`1. Escrow Job` → `2. Sealed Commit` → `3. Hash Reveal` → `4. Vickrey Clear` → `5. Deliver & Print`).
+   - Left (`7 cols` desktop, full-width `375px`): Crisp 2-line statement explaining Tender + interactive 5-step Clearing Lifecycle rail (`1. Escrow Job` → `2. Sealed Commit` → `3. Hash Reveal` → `4. Vickrey Clear` → `5. Deliver & Print`).
    - Right / Full-width Strip: 4 hairline-divided live index cells sourced exclusively from `/tape/median` and `/tape/spread`:
      - **Median Clearing Price** (`NEAR` + exact yocto tooltip, or `"Awaiting print"`)
      - **Median Unit Rate** (`NEAR / unit`)
@@ -67,7 +67,7 @@ No AI-purple glows, no warm-craft beige/brass clichés, no pure `#000000` or `#F
      - Active Auctions list (`/jobs`) showing current phase (`CommitOpen`, `RevealOpen`, `Assigned`, `Delivered`, `Settled`) and live phase window status.
      - Contextual Lifecycle Workbench for the selected job:
        - **Create Job**: Buyer sets category, objective `work_units` + `unit_label`, `reserve_price`, `mechanism` (`Vickrey` default / `FirstPrice`), commit/reveal/delivery durations, and `spec_sha256` (auto-hashed in WebCrypto from job prompt/spec).
-       - **Commit Sealed Bid (`0 NEAR` Function-Call Key safe)**: Worker selects/connects account, enters secret `bid_near` + `eta_seconds`, auto-generates random 16-byte hex `salt` in WebCrypto (`localStorage` salt vault keyed by `contract:job:worker`), previews exact `cleartape:v1:...` SHA-256 commitment hash, and submits `commit_bid`.
+       - **Commit Sealed Bid (`0 NEAR` Function-Call Key safe)**: Worker selects/connects account, enters secret `bid_near` + `eta_seconds`, auto-generates random 16-byte hex `salt` in WebCrypto (`localStorage` salt vault keyed by `contract:job:worker`), previews exact `tender:v1:...` SHA-256 commitment hash, and submits `commit_bid`.
        - **Reveal Bid**: Loads saved `(bid_yocto, eta_seconds, salt)` from browser vault (or manual JSON paste) and calls `reveal_bid`.
        - **Clear Auction**: Calls `finalize_auction`, displaying winner, runner-up bid, and computed Vickrey clearing price + buyer surplus.
        - **Deliver & Settle**: Winner submits `deliverable_uri` + WebCrypto `deliverable_sha256`; Buyer calls `accept_delivery` (or worker triggers `finalize_after_timeout` once dispute window expires), immediately printing to the Consolidated Tape.

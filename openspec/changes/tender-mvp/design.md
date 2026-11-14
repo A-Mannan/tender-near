@@ -1,9 +1,9 @@
-# Design: ClearTape Architecture & NEAR Protocol Implementation
+# Design: Tender Architecture & NEAR Protocol Implementation
 
 ## Context
 
-See `proposal.md` for motivation and capability overview. ClearTape runs across three tightly verified tiers on NEAR Protocol:
-1. **`contracts/cleartape`** — Rust `near-sdk` v5.x smart contract managing escrow, sealed-bid commit-reveal, Vickrey/First-price clearing, optimistic settlement, and NEP-297 tape emissions.
+See `proposal.md` for motivation and capability overview. Tender runs across three tightly verified tiers on NEAR Protocol:
+1. **`contracts/tender`** — Rust `near-sdk` v5.x smart contract managing escrow, sealed-bid commit-reveal, Vickrey/First-price clearing, optimistic settlement, and NEP-297 tape emissions.
 2. **`packages/indexer`** — Node.js v24 TypeScript indexer polling NEAR JSON-RPC (`block`, `chunk`, `EXPERIMENTAL_tx_status` / block outcome receipts), persisting deduplicated NEP-297 events in SQLite (`node:sqlite`), and exposing the public market-tape REST API (`/tape`, `/tape/median`, `/tape/win-rate`, `/tape/spread`, `/jobs`, `/health`).
 3. **`packages/web`** — Vite + React + Tailwind v4 Swiss-precision market terminal and live clearinghouse interface with browser WebCrypto SHA-256 commit-reveal and NEAR RPC / wallet / local sandbox-or-testnet signer integration.
 
@@ -37,7 +37,7 @@ Key NEAR Protocol constraints verified against official NEAR docs (`docs.near.or
 ### 2. Domain-Separated Preimage & Canonical Types
 - **Choice**: Canonical ASCII preimage hashed with `near_sdk::env::sha256`:
   ```text
-  cleartape:v1:<contract_account_id>:<job_id>:<worker_account_id>:<bid_yocto_u128_decimal>:<eta_seconds_u64_decimal>:<salt_utf8>
+  tender:v1:<contract_account_id>:<job_id>:<worker_account_id>:<bid_yocto_u128_decimal>:<eta_seconds_u64_decimal>:<salt_utf8>
   ```
   `commit_hash` is stored and passed as 64-character lowercase hex (`[u8; 32]`). `bid_yocto` is serialized as `NearToken` / `U128` decimal string in JSON ABI (`u128` internally with `overflow-checks = true`).
 - **Rationale**: Binding `contract_account_id`, `job_id`, and `worker_account_id` (`env::predecessor_account_id()`) directly inside the hash makes copied commits (`eve` copying `alice`'s `commit_hash`) and cross-job/cross-deployment replays cryptographically impossible.
@@ -68,11 +68,11 @@ Key NEAR Protocol constraints verified against official NEAR docs (`docs.near.or
   - **Game-Theory Check on `dispute_delivery`**: If a buyer could unilaterally call `dispute_delivery` and immediately refund 100% of escrow back to themselves, a dishonest buyer would dispute every delivered job! Instead, in `Disputed` state, escrow is frozen (neither buyer gets unilateral 100% refund nor worker gets unilateral 100% payout without resolution: buyer can release `accept_delivery` / `resolve_dispute` paying worker ≥0% with remaining surplus locked/routed or mutual settlement, OR an optional `arbiter` account specified at job creation resolves `Disputed` jobs!). Even better: if `arbiter: Option<AccountId>` is set on `create_job`, `dispute_delivery` routes to `arbiter` (`resolve_dispute`); if `arbiter` is `None`, the job operates in pure optimistic-settlement or buyer-acceptance mode (`dispute_delivery` requires an configured `arbiter`, otherwise buyer verifies before `accept_delivery` or lets `dispute_window_ns` auto-settle). That completely eliminates unilateral buyer rug-pulls while supporting arbitrated disputes when an arbiter is configured!
 
 ### 6. NEP-297 Event Schema & Indexer Architecture
-- **NEP-297 Standard**: `EVENT_JSON:{"standard":"cleartape","version":"1.0.0","event":"<event_name>","data":[{...}]}`
+- **NEP-297 Standard**: `EVENT_JSON:{"standard":"tender","version":"1.0.0","event":"<event_name>","data":[{...}]}`
   - Events: `job_created`, `bid_committed`, `bid_revealed`, `auction_cleared`, `delivery_submitted`, `job_settled`, `job_refunded`, `job_disputed`, `payout_failed`, `bond_updated`.
 - **Indexer (`packages/indexer`)**:
   - Uses Node.js built-in `node:sqlite` (`DatabaseSync`) — zero native C++ addon compilation flakiness, deterministic SQL queries, clean-clone portable.
-  - Polls NEAR RPC blocks/chunks from `start_block_height` (recorded at deploy), filters receipts targeting `CLEARTAPE_CONTRACT_ID`, parses `EVENT_JSON:` logs matching `standard === "cleartape"`, and inserts with `PRIMARY KEY (receipt_id, log_index)` inside a SQLite transaction.
+  - Polls NEAR RPC blocks/chunks from `start_block_height` (recorded at deploy), filters receipts targeting `TENDER_CONTRACT_ID`, parses `EVENT_JSON:` logs matching `standard === "tender"`, and inserts with `PRIMARY KEY (receipt_id, log_index)` inside a SQLite transaction.
   - Exposes:
     - `GET /health` — RPC sync status, contract ID, indexed block height, total events.
     - `GET /tape` — Chronological settled prints (`?category=&mechanism=&limit=&offset=`), including `clearing_price_yocto`, `winning_bid_yocto`, `runner_up_bid_yocto`, `reserve_price_yocto`, `unit_price_yocto`, `work_units`, `unit_label`, `buyer`, `winner`, `deliverable_sha256`, `receipt_id`, `block_height`, `settled_at_ns`.
@@ -94,8 +94,8 @@ Key NEAR Protocol constraints verified against official NEAR docs (`docs.near.or
 
 ## Migration Plan
 
-1. Validate OpenSpec (`cleartape-mvp`) and commit planning + `DESIGN.md` + `progress.md`.
-2. Build and test `contracts/cleartape` in `near-sandbox` (Tier 1) + cold-context security audit.
+1. Validate OpenSpec (`tender-mvp`) and commit planning + `DESIGN.md` + `progress.md`.
+2. Build and test `contracts/tender` in `near-sandbox` (Tier 1) + cold-context security audit.
 3. Build and test `packages/indexer` against real `near-sandbox` RPC blocks/events (Tier 2) + cold-context audit.
 4. Build `packages/web` and verify with Playwright full-stack E2E (`near-sandbox` + indexer + Vite) at `375px` and `1440px` + screenshot visual critique (Tier 3).
 5. Deploy to NEAR `testnet`, execute scripted multi-agent Vickrey + First-Price auctions, verify explorer/RPC receipts and indexer tape (Tier 4).

@@ -1,0 +1,19 @@
+{
+  "name": "tender",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Tender — sealed-bid AI labor clearinghouse and consolidated public price index on NEAR",
+  "license": "MIT",
+  "workspaces": [
+    "packages/indexer",
+    "packages/web"
+  ],
+  "engines": {
+    "node": ">=22.5"
+  },
+  "scripts": {
+    "indexer:build": "npm --prefix packages/indexer run build",
+    "indexer:test": "npm --prefix packages/indexer test",
+    "web:build": "npm --prefix packages/web run build"
+  }
+}

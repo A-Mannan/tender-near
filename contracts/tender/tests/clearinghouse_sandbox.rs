@@ -104,7 +104,7 @@ async fn sandbox_vickrey_function_call_key_and_adversarial_edge_cases() -> testr
 {
     // Always build from the current source unless a prebuilt artifact is explicitly supplied,
     // so sandbox tests can never silently execute a stale `.wasm` after contract changes.
-    let contract_wasm = match std::env::var("CLEARTAPE_WASM") {
+    let contract_wasm = match std::env::var("TENDER_WASM") {
         Ok(path) => std::fs::read(path)?,
         Err(_) => {
             let built = cargo_near_build::build_with_cli(Default::default())?;
@@ -118,7 +118,7 @@ async fn sandbox_vickrey_function_call_key_and_adversarial_edge_cases() -> testr
         near_sandbox::config::DEFAULT_GENESIS_ACCOUNT_PRIVATE_KEY.parse()?,
     ))?;
 
-    let contract_acct = create_subaccount(&sandbox, "cleartape.sandbox", 20).await?;
+    let contract_acct = create_subaccount(&sandbox, "tender.sandbox", 20).await?;
     let contract = contract_acct.as_contract();
     let buyer = create_subaccount(&sandbox, "buyer.sandbox", 25).await?;
     let worker1 = create_subaccount(&sandbox, "worker1.sandbox", 5).await?;
@@ -126,7 +126,7 @@ async fn sandbox_vickrey_function_call_key_and_adversarial_edge_cases() -> testr
     let worker3 = create_subaccount(&sandbox, "worker3.sandbox", 5).await?;
     let eve = create_subaccount(&sandbox, "eve.sandbox", 5).await?;
 
-    // Deploy and initialize ClearTape
+    // Deploy and initialize Tender
     Contract::deploy(contract.account_id().clone())
         .use_code(contract_wasm)
         .with_init_call("new", json!({ "owner_id": buyer.account_id() }))?

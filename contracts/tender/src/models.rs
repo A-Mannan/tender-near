@@ -115,6 +115,7 @@ pub struct Job {
     pub clearing_price: Option<u128>,
     pub delivery: Option<DeliveryRecord>,
     pub dispute_reason_sha256: Option<String>,
+    pub disputed_at_ns: Option<u64>,
     pub settled_at_ns: Option<u64>,
     pub storage_reserved: NearToken,
 }
@@ -173,6 +174,7 @@ pub struct JobView {
     pub unit_price: Option<U128>,
     pub delivery: Option<DeliveryRecord>,
     pub dispute_reason_sha256: Option<String>,
+    pub disputed_at_ns: Option<U64>,
     pub settled_at_ns: Option<U64>,
 }
 
@@ -210,7 +212,17 @@ impl Job {
                     "Delivered"
                 }
             }
-            JobStatus::Disputed => "Disputed",
+            JobStatus::Disputed => {
+                if let Some(disputed_at) = self.disputed_at_ns {
+                    if now_ns >= disputed_at.saturating_add(self.dispute_window_ns) {
+                        "DisputeResolutionExpired"
+                    } else {
+                        "Disputed"
+                    }
+                } else {
+                    "Disputed"
+                }
+            }
             JobStatus::Settling => "Settling",
             JobStatus::Settled => "Settled",
             JobStatus::Refunding => "Refunding",
@@ -258,6 +270,7 @@ impl Job {
             unit_price,
             delivery: self.delivery.clone(),
             dispute_reason_sha256: self.dispute_reason_sha256.clone(),
+            disputed_at_ns: self.disputed_at_ns.map(U64),
             settled_at_ns: self.settled_at_ns.map(U64),
         }
     }

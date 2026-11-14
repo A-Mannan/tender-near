@@ -2,7 +2,7 @@ use near_sdk::env;
 use near_sdk::serde::Serialize;
 use near_sdk::serde_json::json;
 
-pub const EVENT_STANDARD: &str = "cleartape";
+pub const EVENT_STANDARD: &str = "tender";
 pub const EVENT_VERSION: &str = "1.0.0";
 
 pub fn emit_event<T: Serialize>(event: &str, data: &T) {

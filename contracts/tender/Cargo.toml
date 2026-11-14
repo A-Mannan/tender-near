@@ -1,10 +1,10 @@
 [package]
-name = "cleartape"
+name = "tender"
 version = "0.1.0"
 edition = "2024"
 resolver = "3"
 rust-version = "1.86"
-description = "ClearTape — Sealed-Bid AI Labor Clearinghouse & Consolidated Price Index on NEAR"
+description = "Tender — Sealed-Bid AI Labor Clearinghouse & Consolidated Price Index on NEAR"
 license = "MIT"
 
 [lib]

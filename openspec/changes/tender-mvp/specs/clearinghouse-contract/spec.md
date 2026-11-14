@@ -33,7 +33,7 @@ The contract SHALL accept sealed bid commitments during the commit window with `
 - **THEN** the contract rejects the call
 
 ### Requirement: Cryptographic reveal verification and replay resistance
-The contract MUST accept `reveal_bid` only during `[commit_deadline_ns, reveal_deadline_ns)` and verify `SHA256("cleartape:v1:" || contract_id || ":" || job_id || ":" || worker_id || ":" || bid_yocto || ":" || eta_seconds || ":" || salt)` equals the stored `commit_hash` with `0 < bid_yocto <= reserve_price`.
+The contract MUST accept `reveal_bid` only during `[commit_deadline_ns, reveal_deadline_ns)` and verify `SHA256("tender:v1:" || contract_id || ":" || job_id || ":" || worker_id || ":" || bid_yocto || ":" || eta_seconds || ":" || salt)` equals the stored `commit_hash` with `0 < bid_yocto <= reserve_price`.
 
 #### Scenario: Copied commit hash replay fails
 - **WHEN** attacker `eve` copies `alice`'s `commit_hash` during the commit phase and submits `alice`'s `(bid_yocto, eta_seconds, salt)` during the reveal phase

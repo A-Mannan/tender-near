@@ -7,7 +7,7 @@ Defines the Consolidated Market Tape & Sealed-Bid Clearinghouse web terminal, en
 ## ADDED Requirements
 
 ### Requirement: Five-second first-viewport comprehension and real data integrity
-The first viewport MUST communicate ClearTape as the public price index of AI labor alongside the live 5-stage sealed-bid clearing lifecycle, rendering exclusively real contract/indexer values with explicit loading, empty, and error states and zero hardcoded price numbers.
+The first viewport MUST communicate Tender as the public price index of AI labor alongside the live 5-stage sealed-bid clearing lifecycle, rendering exclusively real contract/indexer values with explicit loading, empty, and error states and zero hardcoded price numbers.
 
 #### Scenario: Fresh deployment with zero settled prints
 - **WHEN** the UI loads against a newly deployed contract and empty indexer database
@@ -18,7 +18,7 @@ The first viewport MUST communicate ClearTape as the public price index of AI la
 - **THEN** the consolidated tape, category median, competitive spread, and worker win-rate views reflect the exact settled values without page reload or hardcoded fallbacks
 
 ### Requirement: Browser-driven sealed-bid lifecycle execution
-The UI MUST allow users/agents to create an escrowed job, compute a domain-separated `cleartape:v1` SHA-256 bid commitment in browser WebCrypto (retaining the secret salt locally until reveal), submit commits, reveal bids, finalize clearing, submit SHA-256 deliverables, and settle payouts.
+The UI MUST allow users/agents to create an escrowed job, compute a domain-separated `tender:v1` SHA-256 bid commitment in browser WebCrypto (retaining the secret salt locally until reveal), submit commits, reveal bids, finalize clearing, submit SHA-256 deliverables, and settle payouts.
 
 #### Scenario: Full lifecycle driven through browser UI
 - **WHEN** a user creates a job, commits two sealed worker bids, advances to reveal, reveals both bids, clears the auction, submits delivery, and accepts delivery via UI controls

@@ -12,7 +12,7 @@ fn acct(s: &str) -> AccountId {
 
 fn ctx(caller: &str, now_ns: u64, deposit_yocto: u128) -> VMContextBuilder {
     let mut b = VMContextBuilder::new();
-    b.current_account_id(acct("cleartape.testnet"))
+    b.current_account_id(acct("tender.testnet"))
         .signer_account_id(acct(caller))
         .predecessor_account_id(acct(caller))
         .block_timestamp(now_ns)
@@ -24,7 +24,7 @@ fn ctx(caller: &str, now_ns: u64, deposit_yocto: u128) -> VMContextBuilder {
 #[test]
 fn vickrey_second_price_lifecycle_and_nep297_events() {
     testing_env!(ctx("owner.testnet", 1_000, 0).build());
-    let mut ct = ClearTape::new(None);
+    let mut ct = Tender::new(None);
     let storage_req = ct.required_job_storage_deposit(Some(16)).0;
     let reserve = NearToken::from_near(3).as_yoctonear();
 
@@ -95,7 +95,7 @@ fn vickrey_second_price_lifecycle_and_nep297_events() {
     let _ = ct.accept_delivery(U64(0));
     assert_eq!(ct.get_job(U64(0)).unwrap().status, JobStatus::Settling);
 
-    testing_env!(ctx("cleartape.testnet", 4_501, 0).build());
+    testing_env!(ctx("tender.testnet", 4_501, 0).build());
     let ok = ct.on_settlement_complete(
         U64(0),
         "buyer_accepted".to_string(),
@@ -109,7 +109,7 @@ fn vickrey_second_price_lifecycle_and_nep297_events() {
     // Retry settlement via timeout after dispute_window_ns (4000 + 2000 = 6000) -> succeeds!
     testing_env!(ctx("w1.testnet", 6_500, 0).build());
     let _ = ct.finalize_after_timeout(U64(0));
-    testing_env!(ctx("cleartape.testnet", 6_501, 0).build());
+    testing_env!(ctx("tender.testnet", 6_501, 0).build());
     let ok2 = ct.on_settlement_complete(
         U64(0),
         "timeout_auto_settled".to_string(),
@@ -128,7 +128,7 @@ fn vickrey_second_price_lifecycle_and_nep297_events() {
 #[should_panic(expected = "Commitment hash mismatch")]
 fn copied_commit_hash_by_attacker_fails_on_reveal() {
     testing_env!(ctx("owner.testnet", 1_000, 0).build());
-    let mut ct = ClearTape::new(None);
+    let mut ct = Tender::new(None);
     let req = ct.required_job_storage_deposit(Some(8)).0;
     let reserve = NearToken::from_near(2).as_yoctonear();
 
@@ -176,7 +176,7 @@ fn copied_commit_hash_by_attacker_fails_on_reveal() {
 #[should_panic(expected = "Commitment hash mismatch")]
 fn cross_job_commitment_replay_fails() {
     testing_env!(ctx("owner.testnet", 1_000, 0).build());
-    let mut ct = ClearTape::new(None);
+    let mut ct = Tender::new(None);
     let req = ct.required_job_storage_deposit(Some(8)).0;
     let reserve = NearToken::from_near(2).as_yoctonear();
 
@@ -238,7 +238,7 @@ fn cross_job_commitment_replay_fails() {
 #[test]
 fn exact_tie_broken_by_earliest_commit_seq_and_bond_slashing() {
     testing_env!(ctx("owner.testnet", 1_000, 0).build());
-    let mut ct = ClearTape::new(None);
+    let mut ct = Tender::new(None);
     let req = ct.required_job_storage_deposit(Some(8)).0;
     let reserve = NearToken::from_near(2).as_yoctonear();
     let min_bond = NearToken::from_millinear(100).as_yoctonear();
@@ -318,7 +318,7 @@ fn exact_tie_broken_by_earliest_commit_seq_and_bond_slashing() {
     );
 
     // Simulate async payout failure: rollback must preserve the original clearing price
-    testing_env!(ctx("cleartape.testnet", 4_501, 0).build());
+    testing_env!(ctx("tender.testnet", 4_501, 0).build());
     let failed = ct.on_settlement_complete(
         U64(0),
         "arbiter_resolved".to_string(),
@@ -338,7 +338,7 @@ fn exact_tie_broken_by_earliest_commit_seq_and_bond_slashing() {
     // Retry at 50% -> same adjusted payout, no compounding 25% haircut
     testing_env!(ctx("arbiter.testnet", 4_600, 0).build());
     let _ = ct.resolve_dispute(U64(0), 5_000);
-    testing_env!(ctx("cleartape.testnet", 4_601, 0).build());
+    testing_env!(ctx("tender.testnet", 4_601, 0).build());
     let ok = ct.on_settlement_complete(
         U64(0),
         "arbiter_resolved".to_string(),
@@ -350,4 +350,76 @@ fn exact_tie_broken_by_earliest_commit_seq_and_bond_slashing() {
     let settled = ct.get_job(U64(0)).unwrap();
     assert_eq!(settled.status, JobStatus::Settled);
     assert_eq!(settled.clearing_price, Some(U128(tie_bid / 2)));
+}
+
+#[test]
+fn dispute_timeout_settles_when_arbiter_never_resolves() {
+    testing_env!(ctx("owner.testnet", 1_000, 0).build());
+    let mut ct = Tender::new(None);
+    let req = ct.required_job_storage_deposit(Some(8)).0;
+    let reserve = NearToken::from_near(2).as_yoctonear();
+
+    testing_env!(ctx("buyer.testnet", 1_000, reserve + req).build());
+    ct.create_job(
+        "Arbiter Liveness".to_string(),
+        "code-generation".to_string(),
+        SPEC_HASH.to_string(),
+        "".to_string(),
+        U64(1),
+        "module".to_string(),
+        U128(reserve),
+        Some(AuctionMechanism::FirstPrice),
+        U64(1_000),
+        U64(1_000),
+        U64(5_000),
+        U64(1_000),
+        None,
+        Some(8),
+        Some(acct("arbiter.testnet")),
+    );
+
+    let bid = NearToken::from_near(1).as_yoctonear();
+    let hash = ct.compute_commit_hash(
+        U64(0),
+        acct("w1.testnet"),
+        U128(bid),
+        U64(60),
+        "liveness_salt".to_string(),
+    );
+    testing_env!(ctx("w1.testnet", 1_100, 0).build());
+    ct.commit_bid(U64(0), hash);
+    testing_env!(ctx("w1.testnet", 2_200, 0).build());
+    ct.reveal_bid(U64(0), U128(bid), U64(60), "liveness_salt".to_string());
+    testing_env!(ctx("keeper.testnet", 3_100, 0).build());
+    ct.finalize_auction(U64(0));
+
+    testing_env!(ctx("w1.testnet", 4_000, 0).build());
+    ct.submit_delivery(U64(0), "ipfs://module".to_string(), DELIV_HASH.to_string());
+    testing_env!(ctx("buyer.testnet", 4_100, 0).build());
+    ct.dispute_delivery(U64(0), REASON_HASH.to_string());
+
+    // Before the arbiter resolution window elapses, timeout settlement must fail.
+    testing_env!(ctx("keeper.testnet", 5_000, 0).build());
+    let early = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let _ = ct.finalize_after_timeout(U64(0));
+    }));
+    assert!(early.is_err());
+
+    // After dispute_window_ns from the dispute, anyone may settle at the original clearing price.
+    testing_env!(ctx("keeper.testnet", 5_100, 0).build());
+    let phase = ct.get_job(U64(0)).unwrap().phase;
+    assert_eq!(phase, "DisputeResolutionExpired");
+    let _ = ct.finalize_after_timeout(U64(0));
+    testing_env!(ctx("tender.testnet", 5_101, 0).build());
+    let ok = ct.on_settlement_complete(
+        U64(0),
+        "dispute_timeout_auto_settled".to_string(),
+        JobStatus::Disputed,
+        None,
+        Ok(()),
+    );
+    assert!(ok);
+    let settled = ct.get_job(U64(0)).unwrap();
+    assert_eq!(settled.status, JobStatus::Settled);
+    assert_eq!(settled.clearing_price, Some(U128(bid)));
 }

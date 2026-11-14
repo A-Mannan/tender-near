@@ -15,10 +15,11 @@ use near_sdk::{
 
 pub const DEFAULT_MAX_COMMITS: u32 = 32;
 pub const MAX_COMMITS_CAP: u32 = 64;
-/// Conservative upper bound of state bytes per commit+reveal worker slot (AccountId + hash + bid + Vec entry).
-pub const BYTES_PER_BID_SLOT: u64 = 320;
+/// Conservative upper bound of state bytes per commit+reveal worker slot
+/// (two LookupMap keys + BidCommitment + RevealedBid + two Vec entries).
+pub const BYTES_PER_BID_SLOT: u64 = 512;
 /// Base state byte buffer for Job record + delivery metadata.
-pub const BASE_JOB_STORAGE_BYTES: u64 = 1_400;
+pub const BASE_JOB_STORAGE_BYTES: u64 = 1_600;
 
 pub const FT_TRANSFER_GAS: Gas = Gas::from_tgas(20);
 pub const CALLBACK_GAS: Gas = Gas::from_tgas(30);
@@ -27,7 +28,7 @@ pub const MIN_ACTION_GAS: Gas = Gas::from_tgas(65);
 
 #[near(contract_state)]
 #[derive(PanicOnDefault)]
-pub struct ClearTape {
+pub struct Tender {
     pub owner_id: AccountId,
     pub next_job_id: u64,
     pub next_commit_seq: u64,
@@ -68,13 +69,13 @@ pub fn build_commit_preimage(
     salt: &str,
 ) -> String {
     format!(
-        "cleartape:v1:{}:{}:{}:{}:{}:{}",
+        "tender:v1:{}:{}:{}:{}:{}:{}",
         contract_id, job_id, worker_id, bid_yocto, eta_seconds, salt
     )
 }
 
 #[near]
-impl ClearTape {
+impl Tender {
     #[init]
     pub fn new(owner_id: Option<AccountId>) -> Self {
         Self {
@@ -488,11 +489,15 @@ impl ClearTape {
             clearing_price: None,
             delivery: None,
             dispute_reason_sha256: None,
+            disputed_at_ns: None,
             settled_at_ns: None,
             storage_reserved,
         };
 
         let view = job.to_view(now);
+        let event_spec_uri = job.spec_uri.clone();
+        let event_arbiter = job.arbiter.clone();
+        let event_max_commits = job.max_commits;
         self.jobs.insert(job_id, job);
         self.job_commit_workers.insert(job_id, Vec::new());
         self.job_reveal_workers.insert(job_id, Vec::new());
@@ -505,12 +510,15 @@ impl ClearTape {
                 "title": clean_title,
                 "category": clean_cat,
                 "spec_sha256": spec_sha256,
+                "spec_uri": event_spec_uri,
                 "work_units": work_units.to_string(),
                 "unit_label": clean_unit,
                 "escrow_token": escrow_token,
                 "mechanism": mechanism,
                 "reserve_price": reserve_price.to_string(),
                 "min_worker_bond": min_worker_bond.to_string(),
+                "max_commits": event_max_commits,
+                "arbiter": event_arbiter,
                 "commit_deadline_ns": commit_deadline_ns.to_string(),
                 "reveal_deadline_ns": reveal_deadline_ns.to_string(),
                 "delivery_duration_ns": delivery_duration_ns.to_string(),
@@ -906,7 +914,9 @@ impl ClearTape {
             "Only winning worker can set payout account"
         );
         require!(
-            job.status == JobStatus::Assigned || job.status == JobStatus::Delivered,
+            job.status == JobStatus::Assigned
+                || job.status == JobStatus::Delivered
+                || job.status == JobStatus::Disputed,
             "Can only update payout account before settlement completes"
         );
         job.payout_account = Some(payout_account);
@@ -926,22 +936,38 @@ impl ClearTape {
         self.initiate_settlement(id, "buyer_accepted".to_string(), None)
     }
 
-    /// Optimistic auto-settlement after `dispute_window_ns` elapses with no dispute.
+    /// Optimistic auto-settlement after `dispute_window_ns` elapses with no buyer dispute.
+    /// Also provides a liveness fallback when a disputed job's arbiter never resolves:
+    /// after `dispute_window_ns` from the dispute, anyone may settle at the original
+    /// clearing price so escrow cannot be frozen forever.
     /// Requires 0 attached NEAR so Function-Call Access Key worker agents can self-settle.
     pub fn finalize_after_timeout(&mut self, job_id: U64) -> Promise {
         let now = env::block_timestamp();
         let id = job_id.0;
         let job = self.jobs.get(&id).cloned().expect("Job not found");
-        require!(
-            job.status == JobStatus::Delivered,
-            "Job must be in Delivered state for timeout settlement"
-        );
-        let delivery = job.delivery.as_ref().expect("Missing delivery record");
-        require!(
-            now >= delivery.dispute_deadline_ns.0,
-            "Dispute window has not elapsed yet"
-        );
-        self.initiate_settlement(id, "timeout_auto_settled".to_string(), None)
+        let trigger = match job.status {
+            JobStatus::Delivered => {
+                let delivery = job.delivery.as_ref().expect("Missing delivery record");
+                require!(
+                    now >= delivery.dispute_deadline_ns.0,
+                    "Dispute window has not elapsed yet"
+                );
+                "timeout_auto_settled"
+            }
+            JobStatus::Disputed => {
+                let disputed_at = job.disputed_at_ns.expect("Missing dispute timestamp");
+                let resolution_deadline = disputed_at
+                    .checked_add(job.dispute_window_ns)
+                    .expect("resolution_deadline overflow");
+                require!(
+                    now >= resolution_deadline,
+                    "Arbiter resolution window has not elapsed yet"
+                );
+                "dispute_timeout_auto_settled"
+            }
+            _ => env::panic_str("Job must be Delivered or Disputed for timeout settlement"),
+        };
+        self.initiate_settlement(id, trigger.to_string(), None)
     }
 
     /// Refund buyer if winner fails to deliver before `delivery_deadline_ns`.
@@ -1003,7 +1029,11 @@ impl ClearTape {
 
         job.status = JobStatus::Disputed;
         job.dispute_reason_sha256 = Some(reason_sha256.clone());
+        job.disputed_at_ns = Some(now);
         let arbiter = job.arbiter.clone();
+        let resolution_deadline = now
+            .checked_add(job.dispute_window_ns)
+            .expect("resolution_deadline overflow");
         let view = job.to_view(now);
         self.jobs.insert(id, job);
 
@@ -1015,6 +1045,7 @@ impl ClearTape {
                 "arbiter": arbiter,
                 "reason_sha256": reason_sha256,
                 "disputed_at_ns": now.to_string(),
+                "arbiter_resolution_deadline_ns": resolution_deadline.to_string(),
             }),
         );
 
@@ -1118,7 +1149,7 @@ impl ClearTape {
                 near_sdk::serde_json::to_vec(&json!({
                     "receiver_id": payout_receiver,
                     "amount": clearing_price.to_string(),
-                    "memo": format!("ClearTape job #{} settlement", id),
+                    "memo": format!("Tender job #{} settlement", id),
                 }))
                 .unwrap(),
                 NearToken::from_yoctonear(1),
@@ -1235,7 +1266,7 @@ impl ClearTape {
                                     near_sdk::serde_json::to_vec(&json!({
                                         "receiver_id": buyer,
                                         "amount": surplus.to_string(),
-                                        "memo": format!("ClearTape job #{} Vickrey surplus", id),
+                                        "memo": format!("Tender job #{} Vickrey surplus", id),
                                     }))
                                     .unwrap(),
                                     NearToken::from_yoctonear(1),
@@ -1301,7 +1332,7 @@ impl ClearTape {
                 near_sdk::serde_json::to_vec(&json!({
                     "receiver_id": buyer,
                     "amount": amount.to_string(),
-                    "memo": format!("ClearTape job #{} refund", id),
+                    "memo": format!("Tender job #{} refund", id),
                 }))
                 .unwrap(),
                 NearToken::from_yoctonear(1),
